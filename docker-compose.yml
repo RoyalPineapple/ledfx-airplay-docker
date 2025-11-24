@@ -34,10 +34,6 @@ services:
 
     restart: unless-stopped
 
-    # Ensure shairport-sync starts first
-    depends_on:
-      - shairport-sync
-
     # Health check to verify LedFX API is responding
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/api/info"]
@@ -68,5 +64,9 @@ services:
       - ./pulse:/pulse
       # Prototype session hook scripts triggered on AirPlay start/stop
       - ./scripts:/hooks:ro
+
+    # Ensure LedFX starts first to create PulseAudio server
+    depends_on:
+      - ledfx
 
     restart: unless-stopped
