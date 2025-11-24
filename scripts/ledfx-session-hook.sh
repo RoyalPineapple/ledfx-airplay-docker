@@ -17,11 +17,12 @@ LOG_FILE="${LEDFX_HOOK_LOG:-/var/log/shairport-sync/ledfx-session-hook.log}"
 
 usage() {
   cat <<'EOF'
-Usage: ledfx-session-hook.sh <start|stop> [message]
+Usage: ledfx-session-hook.sh <start|stop|log> [message]
 
 Controls LedFx visualization based on AirPlay session state.
 - start: Calls ledfx-start.sh to activate virtual
 - stop: Calls ledfx-stop.sh to pause and deactivate virtual
+- log: Logs the event (for play_begins/play_ends callbacks)
 
 Additional arguments are logged for debugging.
 EOF
@@ -73,6 +74,14 @@ case "$action" in
       exit 1
     }
     log_entry "INFO" "LedFx stopped successfully"
+    ;;
+  log)
+    # Log-only action for play_begins/play_ends callbacks
+    if [ $# -gt 0 ]; then
+      log_entry "LOG" "Playback event: $*"
+    else
+      log_entry "LOG" "Playback event"
+    fi
     ;;
   *)
     usage >&2
