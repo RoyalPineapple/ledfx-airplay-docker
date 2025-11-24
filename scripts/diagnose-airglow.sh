@@ -96,7 +96,12 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
         check_ok "Configuration file exists"
         
         # Check device name
-        DEVICE_NAME=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep 'player name' | awk -F'"' '{print $2}' || echo "")
+        # Format: name = "Airglow";
+        DEVICE_NAME=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep -E '^\s+name\s*=' | sed -n 's/.*name\s*=\s*"\([^"]*\)".*/\1/p' | head -1 || echo "")
+        if [ -z "$DEVICE_NAME" ]; then
+            # Try alternative format: player name = "..."
+            DEVICE_NAME=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep -i 'player name' | sed -n 's/.*"\([^"]*\)".*/\1/p' | head -1 || echo "")
+        fi
         if [ -n "$DEVICE_NAME" ]; then
             check_ok "Device name: $DEVICE_NAME"
         else
