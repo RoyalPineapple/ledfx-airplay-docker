@@ -217,7 +217,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     fi
     
     # Check global paused state
-    PAUSED=$(curl -s "${LEDFX_URL}/api/virtuals" | jq -r 'if type == "object" and has("paused") then .paused else "unknown" end')
+    PAUSED=$(curl -s "${LEDFX_URL}/api/virtuals" | jq -r '.paused' 2>/dev/null || echo "unknown")
     if [ "$PAUSED" = "false" ]; then
         check_ok "Global paused state: false (effects are playing)"
     elif [ "$PAUSED" = "true" ]; then
