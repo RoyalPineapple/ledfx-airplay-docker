@@ -130,7 +130,7 @@ function install_docker() {
     local docker_distro="${ID}"
 
     # Ubuntu derivatives should use ubuntu repo
-    if [[ "${ID_LIKE}" == *"ubuntu"* ]] && [[ "${ID}" != "ubuntu" ]]; then
+    if [[ -n "${ID_LIKE:-}" ]] && [[ "${ID_LIKE}" == *"ubuntu"* ]] && [[ "${ID}" != "ubuntu" ]]; then
         docker_distro="ubuntu"
     fi
 
