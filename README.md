@@ -1,4 +1,4 @@
-# LedFX AirPlay - Docker Compose Stack
+# AirPlay2LedFX - Docker Compose Stack
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-20.10%2B-blue.svg)](https://www.docker.com/)
