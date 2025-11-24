@@ -14,12 +14,12 @@ LEDFX_PORT="${LEDFX_PORT:-8888}"
 # If target host specified, use SSH; otherwise run locally
 if [ -n "$TARGET_HOST" ]; then
     SSH_CMD="ssh -o BatchMode=yes -o ConnectTimeout=5 root@${TARGET_HOST}"
-    # When running on remote host, API is at localhost
-    LEDFX_HOST="localhost"
+    # When checking remote host, API calls are made from local machine
+    LEDFX_HOST="${TARGET_HOST}"
     REMOTE=true
 else
     SSH_CMD=""
-    # When running locally, API might be at localhost or we need to detect
+    # When running locally, API is at localhost
     LEDFX_HOST="${LEDFX_HOST:-localhost}"
     REMOTE=false
 fi
@@ -106,8 +106,9 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
         # Check session hooks
         HOOK_LINE=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep 'run_this_before_entering_active_state' | head -1 || echo "")
         if [ -n "$HOOK_LINE" ]; then
-            HOOK_PATH=$(echo "$HOOK_LINE" | sed -n 's/.*= "\([^"]*\)".*/\1/p' || echo "")
-            if [ -n "$HOOK_PATH" ] && [ "$HOOK_PATH" != "shairport.c" ]; then
+            # Extract just the script path (before any arguments)
+            HOOK_PATH=$(echo "$HOOK_LINE" | sed -n 's/.*= "\([^"]*\)".*/\1/p' | awk '{print $1}' || echo "")
+            if [ -n "$HOOK_PATH" ] && [ "$HOOK_PATH" != "shairport.c" ] && [ "${HOOK_PATH#/}" != "$HOOK_PATH" ]; then
                 if docker_cmd exec shairport-sync test -f "$HOOK_PATH"; then
                     check_ok "Session hook configured: $HOOK_PATH"
                 else
