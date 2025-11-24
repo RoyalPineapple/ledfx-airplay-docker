@@ -1,13 +1,5 @@
 # Airglow — AirPlay ➜ LedFX Stack
 
-```
-   _   _          _
-  /_\ (_)_ _ __ _| |_____ __ __
- / _ \| | '_/ _` | / _ \ V  V /
-/_/ \_\_|_| \__, |_\___/\_/\_/
-            |___/
-```
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/Docker-20.10%2B-blue.svg)](https://www.docker.com/)
 
