@@ -1,6 +1,18 @@
-# LedFx AirPlay - Docker Compose Stack
+# LedFX AirPlay - Docker Compose Stack
 
-Stream audio from any AirPlay device to LedFx for real-time LED visualization.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Docker](https://img.shields.io/badge/Docker-20.10%2B-blue.svg)](https://www.docker.com/)
+
+Stream audio from any AirPlay device to LedFX for real-time LED visualization.
+
+## Features
+
+- **Zero-Config AirPlay 2 Support** - Instantly appears as an AirPlay device on your network
+- **No ALSA Configuration Required** - Uses PulseAudio for clean audio routing
+- **Docker-Based** - Easy deployment with Docker Compose
+- **Real-Time Visualization** - Low-latency audio processing for responsive LED effects
+- **High-Quality Audio** - SoXR interpolation for optimal sound quality
+- **Simple Management** - Web UI for easy configuration and device management
 
 ## Architecture
 
@@ -9,22 +21,24 @@ AirPlay Device (iPhone/Mac)
     ↓ (AirPlay 2)
 Shairport-Sync (AirPlay Receiver)
     ↓ (PulseAudio)
-LedFx (Audio Visualization)
+LedFX (Audio Visualization)
     ↓ (E1.31/UDP)
 LED Strips/Devices
 ```
 
 **How it works:**
 - **Shairport-Sync** receives AirPlay audio streams and outputs to PulseAudio
-- **LedFx** runs a PulseAudio server that Shairport connects to via Unix socket
+- **LedFX** runs a PulseAudio server that Shairport connects to via Unix socket
 - **No ALSA configuration needed** - PulseAudio handles all audio routing
 - **Network mode: host** - Services use host networking for mDNS discovery and LED protocols
 
 ## Prerequisites
 
-- Linux host (Debian/Ubuntu recommended)
-- Docker Engine + Docker Compose
-- Network access for mDNS (AirPlay discovery)
+- **Linux Host** - Debian/Ubuntu recommended (see [Platform Support](#platform-support))
+- **Docker Engine** - Version 20.10 or later
+- **Docker Compose** - Version 2.0 or later (plugin version recommended)
+- **Network Access** - mDNS/Avahi for AirPlay discovery (port 5353/UDP)
+- **Permissions** - Root/sudo access for installation script
 
 ## Quick Start
 
@@ -40,7 +54,7 @@ LED Strips/Devices
    docker compose ps
    docker compose logs
    ```
-4. Open LedFx web UI: `http://localhost:8888`
+4. Open LedFX web UI: `http://localhost:8888`
 
 ### Method 2: Install Script (Automated)
 
@@ -55,20 +69,20 @@ Run the installer which handles Docker installation and setup:
 Edit `configs/shairport-sync.conf` and change the `name` field:
 ```
 general = {
-    name = "LEDFx AirPlay";  // Change this
+    name = "LedFX";  // Change this
     ...
 }
 ```
 
 ### Audio Settings
-In the LedFx web UI (Settings → Audio):
+In the LedFX web UI (Settings → Audio):
 1. Select "pulse" from the audio device dropdown
 2. Click "Save" to apply
 
-This connects LedFx to the PulseAudio monitor that receives audio from Shairport.
+This connects LedFX to the PulseAudio monitor that receives audio from Shairport.
 
 ### LED Devices
-1. Open LedFx web UI: `http://localhost:8888`
+1. Open LedFX web UI: `http://localhost:8888`
 2. Navigate to Devices section
 3. Add your WLED/E1.31 devices
 4. Configure effects and start visualizing
@@ -92,7 +106,7 @@ The AirPlay device "LEDFx AirPlay" should appear in your device's AirPlay menu. 
 - Ensure mDNS/Avahi is working on your network
 
 ### Check Audio Flow
-Inside the LedFx container:
+Inside the LedFX container:
 ```bash
 # List PulseAudio sources
 docker exec ledfx pactl list sources short
@@ -108,7 +122,7 @@ You should see a "Shairport Sync" sink input when audio is playing.
 # Check Pulse socket
 ls -la pulse/
 
-# Verify Pulse server in LedFx
+# Verify Pulse server in LedFX
 docker exec ledfx pactl info
 
 # Check Shairport Pulse connection
@@ -121,10 +135,10 @@ docker logs shairport-sync | grep -i pulse
 - Restart containers: `docker compose restart`
 - Check firewall allows mDNS (port 5353/UDP)
 
-**No audio in LedFx:**
+**No audio in LedFX:**
 - Verify audio is playing to the AirPlay device
 - Check PulseAudio sink-inputs (see above)
-- In LedFx UI, confirm audio device is set to "pulse"
+- In LedFX UI, confirm audio device is set to "pulse"
 
 **Permission errors:**
 - Ensure `pulse/` directory has correct permissions:
@@ -142,7 +156,7 @@ docker compose up -d
 
 ## Ports
 
-- **8888** - LedFx web UI (HTTP)
+- **8888** - LedFX web UI (HTTP)
 - **7000** - Shairport-Sync AirPlay (TCP)
 - **5353** - mDNS/Avahi discovery (UDP)
 
@@ -152,10 +166,10 @@ docker compose up -d
 
 This setup uses a PulseAudio socket to route audio between containers:
 
-1. LedFx container runs PulseAudio in server mode
+1. LedFX container runs PulseAudio in server mode
 2. Creates socket at `./pulse/pulseaudio.socket`
 3. Shairport-Sync connects as Pulse client via this socket
-4. LedFx reads from the Pulse monitor source (`auto_null.monitor`)
+4. LedFX reads from the Pulse monitor source (`auto_null.monitor`)
 
 **Benefits:**
 - No ALSA loopback configuration needed
@@ -169,7 +183,47 @@ This setup uses a PulseAudio socket to route audio between containers:
 - **E1.31/UDP**: LED protocols work better with direct host access
 - **Simplified Routing**: No port mapping needed
 
+**Security Note:** Host networking gives containers direct access to the host's network stack. Only run this stack on trusted networks.
+
+## Platform Support
+
+This project is designed for Linux systems, specifically:
+
+- **Tested on:** Debian 11+, Ubuntu 20.04+
+- **Architectures:** amd64, arm64 (Raspberry Pi 4+)
+- **Not supported:** macOS (Docker Desktop networking limitations), Windows
+
+For non-Debian systems, you may need to manually install Docker and adapt the installation script.
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Report Issues** - Found a bug? Open an issue with details about your setup
+2. **Suggest Improvements** - Have ideas for better configuration or documentation?
+3. **Submit Pull Requests** - Fix bugs or add features (please discuss major changes first)
+
+### Development Guidelines
+
+- Test changes with `docker compose up` before submitting
+- Update documentation for any configuration changes
+- Follow existing code style and formatting
+- Keep commits focused and write clear commit messages
+
+## Support
+
+- **Issues & Bugs:** [GitHub Issues](https://github.com/your-username/ledfx-airplay-docker/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/your-username/ledfx-airplay-docker/discussions)
+- **LedFX Project:** [https://github.com/LedFX/LedFX](https://github.com/LedFX/LedFX)
+- **Shairport Sync:** [https://github.com/mikebrady/shairport-sync](https://github.com/mikebrady/shairport-sync)
+
 ## License
 
-MIT - Feel free to use and modify
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+This is a Docker orchestration project that combines:
+- [LedFX](https://github.com/LedFX/LedFX) - Licensed under GPL-3.0
+- [Shairport Sync](https://github.com/mikebrady/shairport-sync) - Licensed under multiple licenses
+
+Please review the individual project licenses for their respective terms.
 

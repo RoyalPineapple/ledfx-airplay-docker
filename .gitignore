@@ -1,9 +1,53 @@
-# PulseAudio runtime files
-pulse/
-
-# Environment variables
+# Environment files
 .env
+.env.local
+.env.*.local
 
-# Docker volumes
+# Docker runtime data
+pulse/
+*.socket
+*.cookie
+
+# Volume data (if mounted locally)
 ledfx-data/
 
+# Logs
+*.log
+logs/
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-*
+.vscode-test/
+
+# Backup files
+*.backup
+*.backup.*
+*.bak
+*~
+
+# Temporary files
+*.tmp
+.temp/
+tmp/
+
+# Documentation build artifacts
+docs/_build/
+docs/.doctrees/

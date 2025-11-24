@@ -1,16 +1,43 @@
+# LedFX AirPlay - Docker Compose Stack
+#
+# This stack provides AirPlay 2 audio streaming to LedFX for real-time LED visualization.
+# Audio flows: AirPlay Device → Shairport-Sync → PulseAudio → LedFX → LED Devices
+#
+# Host networking is required for:
+# - mDNS/Bonjour discovery (AirPlay device detection)
+# - E1.31/UDP LED protocols (direct host network access)
+# - Simplified audio routing between containers
+#
+# Security Note: Host networking gives containers direct network access.
+# Only run this on trusted networks.
+
 services:
   ledfx:
+    # LedFX - Real-time LED visualization from audio input
+    # Web UI: http://localhost:8888
     image: ghcr.io/ledfx/ledfx:latest
     container_name: ledfx
+
+    # Host networking required for E1.31/UDP LED protocols and mDNS
     network_mode: host
+
     volumes:
+      # PulseAudio configuration and socket for inter-container audio
       - ./pulse:/home/ledfx/.config/pulse
+      # Persistent LedFX configuration (devices, effects, presets)
       - ledfx-data:/root/.ledfx
+
     environment:
+      # Enable real-time Python output (useful for debugging)
       - PYTHONUNBUFFERED=1
+
     restart: unless-stopped
+
+    # Ensure shairport-sync starts first
     depends_on:
       - shairport-sync
+
+    # Health check to verify LedFX API is responding
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/api/info"]
       interval: 30s
@@ -18,17 +45,29 @@ services:
       retries: 3
 
   shairport-sync:
+    # Shairport-Sync - AirPlay 2 receiver
+    # Receives AirPlay audio and outputs to PulseAudio
     image: mikebrady/shairport-sync:latest
     container_name: shairport-sync
+
+    # Host networking required for mDNS/Bonjour AirPlay discovery
     network_mode: host
+
     environment:
+      # Connect to LedFX's PulseAudio server via shared Unix socket
       - PULSE_SERVER=unix:/pulse/pulseaudio.socket
       - PULSE_COOKIE=/pulse/cookie
+
     volumes:
+      # Shairport configuration (AirPlay device name, audio settings)
       - ./configs/shairport-sync.conf:/etc/shairport-sync.conf:ro
+      # PulseAudio socket for audio output to LedFX
       - ./pulse:/pulse
+
     restart: unless-stopped
 
 volumes:
+  # Named volume for LedFX persistent data
+  # Contains device configs, effects, presets, and user settings
   ledfx-data:
 
