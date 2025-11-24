@@ -44,10 +44,6 @@ services:
       timeout: 10s
       retries: 3
 
-    labels:
-      # Allow Watchtower to update this container
-      - com.centurylinklabs.watchtower.enable=true
-
   shairport-sync:
     # Shairport-Sync - AirPlay 2 receiver
     # Receives AirPlay audio and outputs to PulseAudio
@@ -73,28 +69,6 @@ services:
       - ./scripts:/hooks:ro
 
     restart: unless-stopped
-
-    labels:
-      # Allow Watchtower to update this container
-      - com.centurylinklabs.watchtower.enable=true
-
-  watchtower:
-    # Automatically pulls newer images and restarts ledfx + shairport-sync
-    image: containrrr/watchtower:latest
-    container_name: watchtower
-    restart: unless-stopped
-    command:
-      - --cleanup
-      - --include-restarting
-    environment:
-      # Cron schedule: minute hour day-of-month month day-of-week
-      # 0 0 * * * = midnight every day (host time)
-      - WATCHTOWER_SCHEDULE=0 0 * * *
-      # Only update containers that opt-in via label
-      - WATCHTOWER_LABEL_ENABLE=true
-    volumes:
-      # Required for Watchtower to talk to the Docker daemon
-      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 volumes:
   # Named volume for LedFX persistent data
