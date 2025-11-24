@@ -63,7 +63,7 @@ services:
       # PulseAudio socket for audio output to LedFX
       - ./pulse:/pulse
       # Prototype session hook scripts triggered on AirPlay start/stop
-      - ./scripts:/hooks:ro
+      - ./scripts:/scripts:ro
 
     # Ensure LedFX starts first to create PulseAudio server
     depends_on:
