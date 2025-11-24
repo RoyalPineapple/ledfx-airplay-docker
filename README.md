@@ -75,17 +75,16 @@ general = {
 ```
 
 ### Audio Settings
-In the LedFX web UI (Settings → Audio):
-1. Select "pulse" from the audio device dropdown
-2. Click "Save" to apply
+1. Open LedFX Settings tab: `http://localhost:8888/#/Settings`
+2. Select "pulse" from the audio device dropdown
+3. Click "Save" to apply
 
 This connects LedFX to the PulseAudio monitor that receives audio from Shairport.
 
 ### LED Devices
-1. Open LedFX web UI: `http://localhost:8888`
-2. Navigate to Devices section
-3. Add your WLED/E1.31 devices
-4. Configure effects and start visualizing
+1. Open LedFX Devices tab: `http://localhost:8888/#/Devices`
+2. Add your Led devices
+3. Configure effects and start visualizing
 
 ## Troubleshooting
 
