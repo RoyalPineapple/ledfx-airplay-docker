@@ -47,9 +47,15 @@ done
 unset IFS
 
 # Ensure not paused (press play) - this is global, affects all virtuals
-curl -X PUT -H "Content-Type: application/json" \
-  -d '{"paused": false}' \
-  -s "${BASE_URL}/api/virtuals" > /dev/null
+# Retry a few times in case of transient failures
+for i in 1 2 3; do
+  if curl -X PUT -H "Content-Type: application/json" \
+    -d '{"paused": false}' \
+    -s "${BASE_URL}/api/virtuals" | grep -q '"status": "success"'; then
+    break
+  fi
+  sleep 0.5
+done
 
 # Note: streaming is read-only and automatically becomes true when audio input starts
 # We ensure active=true and paused=false, then streaming will follow when audio arrives
