@@ -25,7 +25,7 @@ services:
       # PulseAudio configuration and socket for inter-container audio
       - ./pulse:/home/ledfx/.config/pulse
       # Persistent LedFX configuration (devices, effects, presets)
-      - ledfx-data:/root/.ledfx
+      - ledfx-data:/home/ledfx/ledfx-config
 
     environment:
       # Enable real-time Python output (useful for debugging)
