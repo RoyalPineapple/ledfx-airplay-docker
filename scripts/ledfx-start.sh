@@ -9,16 +9,10 @@ LEDFX_HOST="${2:-192.168.2.122}"
 LEDFX_PORT="${3:-8888}"
 BASE_URL="http://${LEDFX_HOST}:${LEDFX_PORT}"
 
-# Get current state
-STATE=$(curl -s "${BASE_URL}/api/virtuals/${VIRTUAL_ID}")
-ACTIVE=$(echo "$STATE" | jq -r ".[\"${VIRTUAL_ID}\"].active // false")
-
-# Step 1: Activate if not active
-if [ "$ACTIVE" != "true" ]; then
-    curl -X PUT -H "Content-Type: application/json" \
-      -d '{"active": true}' \
-      -s "${BASE_URL}/api/virtuals/${VIRTUAL_ID}" > /dev/null
-fi
+# Step 1: Activate virtual (idempotent - safe to call multiple times)
+curl -X PUT -H "Content-Type: application/json" \
+  -d '{"active": true}' \
+  -s "${BASE_URL}/api/virtuals/${VIRTUAL_ID}" > /dev/null
 
 # Step 2: Ensure not paused (press play)
 curl -X PUT -H "Content-Type: application/json" \
