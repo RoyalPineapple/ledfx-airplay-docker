@@ -234,14 +234,16 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
             if [ -n "$vid" ]; then
                 VIRTUAL_STATE=$(curl -s "${LEDFX_URL}/api/virtuals/${vid}" 2>/dev/null || echo "")
                 if [ -n "$VIRTUAL_STATE" ] && echo "$VIRTUAL_STATE" | grep -q "\"$vid\""; then
-                    # Extract values from JSON (handle nested effect.type)
-                    ACTIVE=$(echo "$VIRTUAL_STATE" | grep -o "\"$vid\"[^}]*" | grep -o '"active":[^,}]*' | cut -d':' -f2 | tr -d ' ' || echo "unknown")
-                    STREAMING=$(echo "$VIRTUAL_STATE" | grep -o "\"$vid\"[^}]*" | grep -o '"streaming":[^,}]*' | cut -d':' -f2 | tr -d ' }' || echo "unknown")
+                    # Extract values from JSON - the response has the virtual ID as the key
+                    # Format: { "dig-quad": { "active": true, "streaming": false, "effect": { "type": "rain" }, ... } }
+                    ACTIVE=$(echo "$VIRTUAL_STATE" | grep -o "\"$vid\"[^}]*{[^}]*\"active\":[^,}]*" | grep -o '"active":[^,}]*' | cut -d':' -f2 | tr -d ' ' || echo "unknown")
+                    STREAMING=$(echo "$VIRTUAL_STATE" | grep -o "\"$vid\"[^}]*{[^}]*\"streaming\":[^,}]*" | grep -o '"streaming":[^,}]*' | cut -d':' -f2 | tr -d ' }' || echo "unknown")
                     # Effect is nested: "effect": { "type": "rain", ... }
-                    EFFECT=$(echo "$VIRTUAL_STATE" | grep -A10 "\"$vid\"" | grep -A5 '"effect"' | grep -o '"type":"[^"]*"' | cut -d'"' -f4 || echo "none")
+                    # Need to look deeper into the nested structure
+                    EFFECT=$(echo "$VIRTUAL_STATE" | grep -A20 "\"$vid\"" | grep -A10 '"effect"' | grep -o '"type":"[^"]*"' | cut -d'"' -f4 || echo "none")
                     # Fallback to last_effect if effect.type not found
                     if [ "$EFFECT" = "none" ] || [ -z "$EFFECT" ]; then
-                        EFFECT=$(echo "$VIRTUAL_STATE" | grep -o '"last_effect":"[^"]*"' | cut -d'"' -f4 || echo "none")
+                        EFFECT=$(echo "$VIRTUAL_STATE" | grep -o "\"$vid\"[^}]*{[^}]*\"last_effect\":\"[^\"]*\"" | grep -o '"last_effect":"[^"]*"' | cut -d'"' -f4 || echo "none")
                     fi
                     
                     echo
@@ -252,11 +254,12 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
                         check_warn "      Active: false"
                     fi
                     
-                    # Streaming can be false when paused or no audio, but if active=true and effect loaded, it's working
+                    # Streaming is false when no audio is playing, which is normal
+                    # If active=true and effect is loaded, the system is working correctly
                     if [ "$STREAMING" = "true" ]; then
                         check_ok "      Streaming: true (receiving audio)"
                     elif [ "$ACTIVE" = "true" ] && [ "$EFFECT" != "none" ]; then
-                        check_ok "      Streaming: false (paused or no audio, but configured)"
+                        check_ok "      Streaming: false (no audio playing, but configured correctly)"
                     else
                         check_warn "      Streaming: false (no audio input)"
                     fi
@@ -278,15 +281,17 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     echo "  Devices:"
     DEVICE_DATA=$(curl -s "${LEDFX_URL}/api/devices")
     if echo "$DEVICE_DATA" | grep -q '"devices"'; then
-        # Extract device IDs from the devices object, excluding "config" and other non-device keys
-        DEVICE_IDS=$(echo "$DEVICE_DATA" | grep -o '"devices"[^}]*' | grep -o '"[^"]*":\s*{' | grep -v -E 'status|devices|config' | sed 's/":.*//' | sed 's/"//g' | sort -u)
+        # Extract device IDs from the devices object
+        # Format: { "devices": { "dig-quad": { "online": true, ... }, ... } }
+        DEVICE_IDS=$(echo "$DEVICE_DATA" | grep -o '"devices"[^}]*{[^}]*' | grep -o '"[^"]*":\s*{' | grep -v -E 'status|devices|config' | sed 's/":.*//' | sed 's/"//g' | sort -u)
         DEVICE_COUNT=$(echo "$DEVICE_IDS" | grep -v '^$' | wc -l | tr -d ' ')
         check_ok "Found $DEVICE_COUNT device(s)"
         
         echo "$DEVICE_IDS" | grep -v '^$' | while read did; do
             if [ -n "$did" ]; then
-                # Extract online status for this specific device
-                ONLINE=$(echo "$DEVICE_DATA" | grep -A10 "\"devices\"" | grep -A5 "\"$did\"" | grep '"online"' | grep -o 'true\|false' | head -1 || echo "unknown")
+                # Extract online status - look for the device key and then online field
+                # The structure is: "dig-quad": { "online": true, ... }
+                ONLINE=$(echo "$DEVICE_DATA" | grep -A10 "\"devices\"" | grep -A10 "\"$did\"" | grep '"online"' | grep -o 'true\|false' | head -1 || echo "unknown")
                 if [ "$ONLINE" = "true" ]; then
                     check_ok "      $did: online"
                 else
