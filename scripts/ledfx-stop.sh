@@ -49,24 +49,37 @@ deactivate_virtual_simple() {
 }
 
 # Function to deactivate a single virtual (toggle pattern for Govee reliability)
+# Parameters: $1 = virtual_id, $2 = repeats (default: 1)
 deactivate_virtual_govee() {
   local vid="$1"
-  # Send deactivate command
-  curl -X PUT -H "Content-Type: application/json" \
-    -d '{"active": false}' \
-    -s "${BASE_URL}/api/virtuals/${vid}" > /dev/null
-  # Wait 0.1 seconds
-  sleep 0.1
-  # Send activate command (toggle to ensure state is processed)
-  curl -X PUT -H "Content-Type: application/json" \
-    -d '{"active": true}' \
-    -s "${BASE_URL}/api/virtuals/${vid}" > /dev/null
-  # Wait 0.1 seconds
-  sleep 0.1
-  # Send deactivate command again (final state)
-  curl -X PUT -H "Content-Type: application/json" \
-    -d '{"active": false}' \
-    -s "${BASE_URL}/api/virtuals/${vid}" > /dev/null
+  local repeats="${2:-1}"
+  local i=0
+  
+  # Repeat the toggle pattern: false → delay → true → delay → false
+  while [ $i -lt $repeats ]; do
+    # Send deactivate command
+    curl -X PUT -H "Content-Type: application/json" \
+      -d '{"active": false}' \
+      -s "${BASE_URL}/api/virtuals/${vid}" > /dev/null
+    # Wait 0.1 seconds
+    sleep 0.1
+    # Send activate command (toggle to ensure state is processed)
+    curl -X PUT -H "Content-Type: application/json" \
+      -d '{"active": true}' \
+      -s "${BASE_URL}/api/virtuals/${vid}" > /dev/null
+    # Wait 0.1 seconds
+    sleep 0.1
+    # Send deactivate command again (final state for this cycle)
+    curl -X PUT -H "Content-Type: application/json" \
+      -d '{"active": false}' \
+      -s "${BASE_URL}/api/virtuals/${vid}" > /dev/null
+    
+    i=$((i + 1))
+    # Add delay between cycles (except after the last one)
+    if [ $i -lt $repeats ]; then
+      sleep 0.1
+    fi
+  done
 }
 
 # If no virtuals specified, get all virtuals from API
@@ -85,7 +98,8 @@ for vid in $VIRTUAL_IDS; do
   vid=$(echo "$vid" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   if [ -n "$vid" ]; then
     if virtual_uses_govee "$vid"; then
-      deactivate_virtual_govee "$vid"
+      # Use toggle pattern with configurable repeats (default: 1)
+      deactivate_virtual_govee "$vid" "${GOVEE_STOP_REPEATS:-1}"
     else
       deactivate_virtual_simple "$vid"
     fi
