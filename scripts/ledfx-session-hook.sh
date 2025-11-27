@@ -12,9 +12,9 @@ check_hook_enabled() {
   # Try YAML first
   if [ -f /configs/ledfx-hooks.yaml ]; then
     if [ "$hook_type" = "start" ]; then
-      enabled=$(yq eval '.hooks.start_enabled // true' /configs/ledfx-hooks.yaml 2>/dev/null || echo "true")
+      enabled=$(yq eval '.hooks.start.enabled // true' /configs/ledfx-hooks.yaml 2>/dev/null || echo "true")
     else
-      enabled=$(yq eval '.hooks.end_enabled // true' /configs/ledfx-hooks.yaml 2>/dev/null || echo "true")
+      enabled=$(yq eval '.hooks.end.enabled // true' /configs/ledfx-hooks.yaml 2>/dev/null || echo "true")
     fi
     
     # yq returns "true" or "false" as strings, convert to exit code
@@ -25,8 +25,8 @@ check_hook_enabled() {
     fi
   fi
   
-  # Default to enabled if YAML doesn't exist
-  return 0
+  # Default to disabled if YAML doesn't exist (fresh installation)
+  return 1
 }
 
 # Configuration - load from config file if available

@@ -318,10 +318,10 @@ def get_hook_config():
                 'end_hook_enabled': end_hook.get('enabled', True)
             }
         
-        # Default if YAML doesn't exist yet
+        # Default if YAML doesn't exist yet (fresh installation - hooks disabled)
         return {
-            'start_hook_enabled': True,
-            'end_hook_enabled': True
+            'start_hook_enabled': False,
+            'end_hook_enabled': False
         }
     except Exception as e:
         logger.error(f"Error reading hook config: {e}")
@@ -408,17 +408,17 @@ def get_virtual_config():
                 }
             }
         
-        # Default if no config exists
+        # Default if no config exists (fresh installation - hooks disabled)
         return {
             'ledfx': {'host': 'localhost', 'port': 8888},
             'hooks': {
                 'start': {
-                    'enabled': True,
+                    'enabled': False,
                     'virtuals': [],
                     'all_virtuals': True  # Explicit flag, not inferred from empty list
                 },
                 'end': {
-                    'enabled': True,
+                    'enabled': False,
                     'virtuals': [],
                     'all_virtuals': True  # Explicit flag, not inferred from empty list
                 }
@@ -471,7 +471,15 @@ def save_virtual_config(config_data):
 
 @app.route('/')
 def index():
-    """Main status dashboard page"""
+    """Landing page"""
+    # Check if this is a fresh installation (no config file)
+    is_fresh_install = not os.path.exists(HOOKS_YAML)
+    return render_template('landing.html', is_fresh_install=is_fresh_install)
+
+
+@app.route('/status')
+def status_page():
+    """Status dashboard page"""
     return render_template('index.html')
 
 

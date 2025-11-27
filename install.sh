@@ -168,11 +168,55 @@ function copy_configs() {
             exit 1
         }
         
-        if [[ -d "${SCRIPT_DIR}/configs" ]]; then
-            cp -r "${SCRIPT_DIR}/configs"/* "${INSTALL_DIR}/configs/" || {
-                msg_error "Failed to copy configuration files"
+        # Copy Dockerfiles needed for building images
+        if [[ -f "${SCRIPT_DIR}/Dockerfile.web" ]]; then
+            cp "${SCRIPT_DIR}/Dockerfile.web" "${INSTALL_DIR}/" || {
+                msg_error "Failed to copy Dockerfile.web"
                 exit 1
             }
+        fi
+        
+        if [[ -f "${SCRIPT_DIR}/Dockerfile.shairport-sync" ]]; then
+            cp "${SCRIPT_DIR}/Dockerfile.shairport-sync" "${INSTALL_DIR}/" || {
+                msg_error "Failed to copy Dockerfile.shairport-sync"
+                exit 1
+            }
+        fi
+        
+        # Copy web application directory
+        if [[ -d "${SCRIPT_DIR}/web" ]]; then
+            cp -r "${SCRIPT_DIR}/web" "${INSTALL_DIR}/" || {
+                msg_error "Failed to copy web directory"
+                exit 1
+            }
+        fi
+        
+        # Copy scripts directory
+        if [[ -d "${SCRIPT_DIR}/scripts" ]]; then
+            cp -r "${SCRIPT_DIR}/scripts" "${INSTALL_DIR}/" || {
+                msg_error "Failed to copy scripts directory"
+                exit 1
+            }
+        fi
+        
+        # Copy .dockerignore if it exists
+        if [[ -f "${SCRIPT_DIR}/.dockerignore" ]]; then
+            cp "${SCRIPT_DIR}/.dockerignore" "${INSTALL_DIR}/" || {
+                msg_warn "Failed to copy .dockerignore (non-fatal)"
+            }
+        fi
+        
+        if [[ -d "${SCRIPT_DIR}/configs" ]]; then
+            # Copy config files, but exclude ledfx-hooks.yaml (created on first config save)
+            mkdir -p "${INSTALL_DIR}/configs"
+            for config_file in "${SCRIPT_DIR}/configs"/*; do
+                if [[ -f "${config_file}" ]] && [[ "$(basename "${config_file}")" != "ledfx-hooks.yaml" ]]; then
+                    cp "${config_file}" "${INSTALL_DIR}/configs/" || {
+                        msg_error "Failed to copy $(basename "${config_file}")"
+                        exit 1
+                    }
+                fi
+            done
         fi
     else
         msg_info "Downloading configuration files from GitHub..."
@@ -181,6 +225,22 @@ function copy_configs() {
             msg_error "Failed to download docker-compose.yml"
             exit 1
         }
+        
+        # Download Dockerfiles
+        curl -fsSL "${repo_url}/Dockerfile.web" -o "${INSTALL_DIR}/Dockerfile.web" || {
+            msg_error "Failed to download Dockerfile.web"
+            exit 1
+        }
+        
+        curl -fsSL "${repo_url}/Dockerfile.shairport-sync" -o "${INSTALL_DIR}/Dockerfile.shairport-sync" || {
+            msg_error "Failed to download Dockerfile.shairport-sync"
+            exit 1
+        }
+        
+        # Download web directory (need to download files individually or use git)
+        msg_info "Note: For full installation from GitHub, consider cloning the repository:"
+        msg_info "  git clone https://github.com/RoyalPineapple/airglow.git ${INSTALL_DIR}"
+        msg_info "  Then run this installer from that directory"
         
         curl -fsSL "${repo_url}/configs/shairport-sync.conf" -o "${INSTALL_DIR}/configs/shairport-sync.conf" || {
             msg_error "Failed to download shairport-sync.conf"
@@ -193,6 +253,33 @@ function copy_configs() {
     fi
 
     msg_ok "Configuration files deployed"
+    
+    # Initialize git repository for future updates (only if installing from a git repo)
+    # This allows seamless updates via update-airglow.sh script
+    if [[ "${DRY_RUN}" == false ]] && [[ -d "${INSTALL_DIR}" ]]; then
+        # Only initialize git if we're installing from a local git repository
+        # (indicates this is a managed deployment, not a standalone download)
+        if [[ -d "${SCRIPT_DIR}/.git" ]] && command -v git &>/dev/null; then
+            msg_info "Initializing git repository for future updates..."
+            cd "${INSTALL_DIR}" || exit 1
+            if ! git rev-parse --git-dir >/dev/null 2>&1; then
+                git init -q
+                # Use the same remote as the source repository
+                local source_remote=$(cd "${SCRIPT_DIR}" && git remote get-url origin 2>/dev/null || echo "https://github.com/RoyalPineapple/airglow.git")
+                git remote add origin "${source_remote}" 2>/dev/null || true
+                git fetch origin -q 2>/dev/null || true
+                # Add all files and create initial commit
+                git add -A
+                git commit -m "Initial installation" -q 2>/dev/null || true
+                # Try to checkout the branch we're installing from (if available)
+                local current_branch=$(cd "${SCRIPT_DIR}" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "master")
+                if git ls-remote --heads origin "${current_branch}" 2>/dev/null | grep -q "${current_branch}"; then
+                    git checkout -b "${current_branch}" "origin/${current_branch}" 2>/dev/null || true
+                fi
+                msg_ok "Git repository initialized"
+            fi
+        fi
+    fi
 }
 
 # Start the Docker Compose stack

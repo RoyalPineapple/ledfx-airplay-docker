@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airglow</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Airglow</h1>
+            <p class="tagline">AirPlay ➜ LedFX Visualization</p>
+        </header>
+
+        {% if is_fresh_install %}
+        <div class="setup-banner">
+            <div class="setup-icon">🚀</div>
+            <div class="setup-content">
+                <h2>Welcome to Airglow!</h2>
+                <p>This appears to be a fresh installation. AirPlay hooks are currently disabled by default. Configure your hooks and LedFX virtuals to get started.</p>
+                <a href="/config" class="btn btn-primary">Configure Now</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <main class="landing-main">
+            <div class="landing-cards">
+                <a href="/status" class="landing-card">
+                    <div class="card-icon">📊</div>
+                    <h2>Status Dashboard</h2>
+                    <p>View real-time system status, container health, and audio flow information</p>
+                </a>
+
+                <a href="/config" class="landing-card">
+                    <div class="card-icon">⚙️</div>
+                    <h2>Configuration</h2>
+                    <p>Configure AirPlay hooks, virtual selection, and repeat counts</p>
+                </a>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
+
