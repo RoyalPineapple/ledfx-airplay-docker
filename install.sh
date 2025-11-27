@@ -207,10 +207,16 @@ function copy_configs() {
         fi
         
         if [[ -d "${SCRIPT_DIR}/configs" ]]; then
-            cp -r "${SCRIPT_DIR}/configs"/* "${INSTALL_DIR}/configs/" || {
-                msg_error "Failed to copy configuration files"
-                exit 1
-            }
+            # Copy config files, but exclude ledfx-hooks.yaml (created on first config save)
+            mkdir -p "${INSTALL_DIR}/configs"
+            for config_file in "${SCRIPT_DIR}/configs"/*; do
+                if [[ -f "${config_file}" ]] && [[ "$(basename "${config_file}")" != "ledfx-hooks.yaml" ]]; then
+                    cp "${config_file}" "${INSTALL_DIR}/configs/" || {
+                        msg_error "Failed to copy $(basename "${config_file}")"
+                        exit 1
+                    }
+                fi
+            done
         fi
     else
         msg_info "Downloading configuration files from GitHub..."
