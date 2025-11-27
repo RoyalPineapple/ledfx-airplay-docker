@@ -524,21 +524,32 @@ def index():
     except Exception:
         pass
     
+    # Check if banner image exists
+    banner_path = os.path.join(app.static_folder, 'banner.jpg')
+    has_banner = os.path.exists(banner_path)
+    
     return render_template('landing.html', 
                           is_fresh_install=is_fresh_install,
-                          has_ledfx_devices=has_ledfx_devices)
+                          has_ledfx_devices=has_ledfx_devices,
+                          has_banner=has_banner)
 
 
 @app.route('/status')
 def status_page():
     """Status dashboard page"""
-    return render_template('index.html')
+    # Check if banner image exists
+    banner_path = os.path.join(app.static_folder, 'banner.jpg')
+    has_banner = os.path.exists(banner_path)
+    return render_template('index.html', has_banner=has_banner)
 
 
 @app.route('/config')
 def config():
     """Configuration page"""
-    return render_template('config.html')
+    # Check if banner image exists
+    banner_path = os.path.join(app.static_folder, 'banner.jpg')
+    has_banner = os.path.exists(banner_path)
+    return render_template('config.html', has_banner=has_banner)
 
 
 @app.route('/api/status')
