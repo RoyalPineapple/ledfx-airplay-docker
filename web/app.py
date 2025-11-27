@@ -538,8 +538,9 @@ def index():
 def status_page():
     """Status dashboard page"""
     # Check if banner image exists
-    banner_path = os.path.join(app.static_folder, 'banner.jpg')
-    has_banner = os.path.exists(banner_path)
+    static_folder = app.static_folder or os.path.join(os.path.dirname(__file__), 'static')
+    banner_path = os.path.join(static_folder, 'banner.jpg')
+    has_banner = os.path.exists(banner_path) and os.path.isfile(banner_path)
     return render_template('index.html', has_banner=has_banner)
 
 
@@ -547,8 +548,9 @@ def status_page():
 def config():
     """Configuration page"""
     # Check if banner image exists
-    banner_path = os.path.join(app.static_folder, 'banner.jpg')
-    has_banner = os.path.exists(banner_path)
+    static_folder = app.static_folder or os.path.join(os.path.dirname(__file__), 'static')
+    banner_path = os.path.join(static_folder, 'banner.jpg')
+    has_banner = os.path.exists(banner_path) and os.path.isfile(banner_path)
     return render_template('config.html', has_banner=has_banner)
 
 
