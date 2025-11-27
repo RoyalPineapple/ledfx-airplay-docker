@@ -1,6 +1,6 @@
-# Custom Shairport-Sync image with jq for JSON parsing
+# Custom Shairport-Sync image with jq for JSON parsing and yq for YAML parsing
 FROM mikebrady/shairport-sync:latest
 
-# Install jq for JSON parsing in hook scripts
-RUN apk add --no-cache jq
+# Install jq for JSON parsing and yq for YAML parsing in hook scripts
+RUN apk add --no-cache jq yq
 

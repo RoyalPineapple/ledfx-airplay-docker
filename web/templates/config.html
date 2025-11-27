@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airglow Configuration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Airglow Configuration</h1>
+            <nav>
+                <a href="/">← Back to Dashboard</a>
+            </nav>
+        </header>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+
+        <form id="config-form">
+            <!-- Start Hook Section -->
+            <section class="config-section">
+                <div class="hook-header">
+                    <h2>Start Hook</h2>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="start-hook-enabled" class="toggle-checkbox">
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-text">Enabled</span>
+                    </label>
+                </div>
+                <p class="section-description">Controls <code>run_this_before_entering_active_state</code></p>
+                
+                <div class="virtual-selection-controls">
+                    <label class="checkbox-label all-virtuals-label">
+                        <input type="checkbox" id="start-all-virtuals" class="checkbox-input all-virtuals-checkbox">
+                        <span class="checkbox-text">All Virtuals</span>
+                    </label>
+                </div>
+
+                <div id="start-virtuals-list" class="virtuals-list" style="display: none;">
+                    <p class="loading">Loading virtuals...</p>
+                </div>
+            </section>
+
+            <!-- End Hook Section -->
+            <section class="config-section">
+                <div class="hook-header">
+                    <h2>End Hook</h2>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="end-hook-enabled" class="toggle-checkbox">
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-text">Enabled</span>
+                    </label>
+                </div>
+                <p class="section-description">Controls <code>run_this_after_exiting_active_state</code></p>
+                
+                <div class="virtual-selection-controls">
+                    <label class="checkbox-label all-virtuals-label">
+                        <input type="checkbox" id="end-all-virtuals" class="checkbox-input all-virtuals-checkbox">
+                        <span class="checkbox-text">All Virtuals</span>
+                    </label>
+                </div>
+
+                <div id="end-virtuals-list" class="virtuals-list" style="display: none;">
+                    <p class="loading">Loading virtuals...</p>
+                </div>
+            </section>
+
+            <!-- Save Button -->
+            <div class="form-actions">
+                <button type="submit" id="save-btn" class="btn btn-primary">Save Configuration</button>
+                <span id="save-status" class="save-status"></span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let configData = null;
+        let availableVirtuals = [];
+        let refreshInterval = null;
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successEl = document.getElementById('success-message');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            setTimeout(() => {
+                successEl.style.display = 'none';
+            }, 3000);
+        }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                configData = data;
+                availableVirtuals = data.available_virtuals || [];
+
+                // Update hook toggles
+                document.getElementById('start-hook-enabled').checked = data.hooks.start_hook_enabled !== false;
+                document.getElementById('end-hook-enabled').checked = data.hooks.end_hook_enabled !== false;
+
+                // Update virtual selection for each hook
+                updateVirtualSelection('start', data.virtuals.hooks?.start);
+                updateVirtualSelection('end', data.virtuals.hooks?.end);
+
+            } catch (error) {
+                showError(`Failed to load configuration: ${error.message}`);
+            }
+        }
+
+        // Update virtual selection UI for a hook
+        function updateVirtualSelection(hookType, hookConfig) {
+            if (!hookConfig) {
+                hookConfig = { enabled: true, virtuals: [], all_virtuals: true };
+            }
+
+            const allVirtualsChecked = hookConfig.all_virtuals === true;
+            const selectedVirtuals = hookConfig.virtuals || [];
+            const listEl = document.getElementById(`${hookType}-virtuals-list`);
+            const allVirtualsCheckbox = document.getElementById(`${hookType}-all-virtuals`);
+
+            // Update "All Virtuals" checkbox
+            allVirtualsCheckbox.checked = allVirtualsChecked;
+
+            // Show/hide virtuals list based on "All Virtuals" selection
+            if (allVirtualsChecked) {
+                listEl.style.display = 'none';
+            } else {
+                listEl.style.display = 'block';
+                buildVirtualsList(hookType, selectedVirtuals);
+            }
+        }
+
+        // Build virtuals list HTML
+        function buildVirtualsList(hookType, selectedVirtuals) {
+            const listEl = document.getElementById(`${hookType}-virtuals-list`);
+            listEl.innerHTML = '';
+
+            if (availableVirtuals.length === 0) {
+                listEl.innerHTML = '<p class="no-virtuals">No virtuals available. Make sure LedFX is running and connected.</p>';
+                return;
+            }
+
+            availableVirtuals.forEach(vid => {
+                const virtualConfig = selectedVirtuals.find(v => v.id === vid) || { id: vid, repeats: 1 };
+                
+                const virtualDiv = document.createElement('div');
+                virtualDiv.className = 'virtual-item';
+                virtualDiv.innerHTML = `
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="virtual-checkbox" data-vid="${escapeHtml(vid)}" data-hook="${hookType}" ${selectedVirtuals.some(v => v.id === vid) ? 'checked' : ''}>
+                        <span class="checkbox-text">${escapeHtml(vid)}</span>
+                    </label>
+                    <div class="virtual-repeats">
+                        <div class="repeat-group">
+                            <label>Repeats:</label>
+                            <input type="number" class="repeat-input" data-vid="${escapeHtml(vid)}" data-hook="${hookType}" value="${virtualConfig.repeats || 1}" min="0" max="10">
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(virtualDiv);
+            });
+        }
+
+        // Handle "All Virtuals" checkbox changes
+        document.getElementById('start-all-virtuals').addEventListener('change', function() {
+            const listEl = document.getElementById('start-virtuals-list');
+            if (this.checked) {
+                listEl.style.display = 'none';
+            } else {
+                listEl.style.display = 'block';
+                if (listEl.innerHTML.includes('Loading')) {
+                    // Build list if not already built
+                    const hookConfig = configData?.virtuals?.hooks?.start || { virtuals: [], all_virtuals: false };
+                    buildVirtualsList('start', hookConfig.virtuals);
+                }
+            }
+        });
+
+        document.getElementById('end-all-virtuals').addEventListener('change', function() {
+            const listEl = document.getElementById('end-virtuals-list');
+            if (this.checked) {
+                listEl.style.display = 'none';
+            } else {
+                listEl.style.display = 'block';
+                if (listEl.innerHTML.includes('Loading')) {
+                    // Build list if not already built
+                    const hookConfig = configData?.virtuals?.hooks?.end || { virtuals: [], all_virtuals: false };
+                    buildVirtualsList('end', hookConfig.virtuals);
+                }
+            }
+        });
+
+        // Save configuration
+        document.getElementById('config-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const saveBtn = document.getElementById('save-btn');
+            const saveStatus = document.getElementById('save-status');
+            
+            saveBtn.disabled = true;
+            saveStatus.textContent = 'Saving...';
+
+            try {
+                // Collect start hook configuration
+                const startAllVirtuals = document.getElementById('start-all-virtuals').checked;
+                const startVirtuals = [];
+                if (!startAllVirtuals) {
+                    document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
+                        const vid = cb.dataset.vid;
+                        const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="start"][data-vid="${vid}"]`).value) || 1;
+                        if (repeats > 0) {
+                            startVirtuals.push({ id: vid, repeats: repeats });
+                        }
+                    });
+                }
+
+                // Collect end hook configuration
+                const endAllVirtuals = document.getElementById('end-all-virtuals').checked;
+                const endVirtuals = [];
+                if (!endAllVirtuals) {
+                    document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
+                        const vid = cb.dataset.vid;
+                        const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="end"][data-vid="${vid}"]`).value) || 0;
+                        if (repeats > 0) {
+                            endVirtuals.push({ id: vid, repeats: repeats });
+                        }
+                    });
+                }
+
+                const configPayload = {
+                    start_enabled: document.getElementById('start-hook-enabled').checked,
+                    end_enabled: document.getElementById('end-hook-enabled').checked,
+                    start_hook: {
+                        all_virtuals: startAllVirtuals,
+                        virtuals: startVirtuals
+                    },
+                    end_hook: {
+                        all_virtuals: endAllVirtuals,
+                        virtuals: endVirtuals
+                    }
+                };
+
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configPayload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+
+                if (data.warning) {
+                    showSuccess(`Configuration saved with warning: ${data.warning}`);
+                } else {
+                    showSuccess('Configuration saved successfully!');
+                }
+
+                // Reload config to reflect any changes
+                await loadConfig();
+
+            } catch (error) {
+                showError(`Failed to save configuration: ${error.message}`);
+            } finally {
+                saveBtn.disabled = false;
+                saveStatus.textContent = '';
+            }
+        });
+
+        // Auto-refresh available virtuals list
+        async function refreshVirtuals() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    const newVirtuals = data.available_virtuals || [];
+                    
+                    // Only update if list changed
+                    if (JSON.stringify(newVirtuals) !== JSON.stringify(availableVirtuals)) {
+                        availableVirtuals = newVirtuals;
+                        if (configData) {
+                            updateVirtualSelection('start', configData.virtuals.hooks?.start);
+                            updateVirtualSelection('end', configData.virtuals.hooks?.end);
+                        }
+                    }
+                }
+            } catch (error) {
+                // Silently fail on refresh
+            }
+        }
+
+        // Initial load
+        loadConfig();
+
+        // Refresh virtuals list every 10 seconds
+        refreshInterval = setInterval(refreshVirtuals, 10000);
+
+        // Clear interval on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

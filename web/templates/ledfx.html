@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LedFX Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LedFX Details</h1>
+            <nav>
+                <a href="/">← Back to Dashboard</a>
+            </nav>
+        </header>
+
+        <div id="ledfx-container">
+            <p class="loading">Loading LedFX data...</p>
+        </div>
+
+        <div id="last-update" class="last-update"></div>
+    </div>
+
+    <script>
+        let refreshInterval = null;
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatStatus(status) {
+            return status ? '<span class="status-dot status-ok"></span> Yes' : '<span class="status-dot status-error"></span> No';
+        }
+
+        async function refreshLedFX() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+
+                const container = document.getElementById('ledfx-container');
+                let html = '';
+
+                // LedFX Virtuals
+                html += '<section class="status-section">';
+                html += '<h2>LedFX Virtuals</h2>';
+                if (data.virtuals?.connected) {
+                    const virtuals = data.virtuals.virtuals || {};
+                    if (Object.keys(virtuals).length === 0) {
+                        html += '<p>No virtuals configured.</p>';
+                    } else {
+                        html += '<div class="virtuals-grid">';
+                        for (const [vid, vdata] of Object.entries(virtuals)) {
+                            html += '<div class="virtual-item">';
+                            html += `<strong>${escapeHtml(vid)}</strong><br>`;
+                            html += `Active: ${formatStatus(vdata.active)}<br>`;
+                            html += `Streaming: ${formatStatus(vdata.streaming)}<br>`;
+                            html += `Effect: ${escapeHtml(vdata.effect || 'none')}`;
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                    }
+                } else {
+                    html += '<p class="error">LedFX not connected</p>';
+                }
+                html += '</section>';
+
+                // LedFX Devices
+                html += '<section class="status-section">';
+                html += '<h2>LedFX Devices</h2>';
+                if (data.devices?.connected) {
+                    const devices = data.devices.devices || {};
+                    if (Object.keys(devices).length === 0) {
+                        html += '<p>No devices configured.</p>';
+                    } else {
+                        html += '<div class="devices-grid">';
+                        for (const [did, ddata] of Object.entries(devices)) {
+                            html += '<div class="device-item">';
+                            html += `<strong>${escapeHtml(did)}</strong><br>`;
+                            html += `Online: ${formatStatus(ddata.online)}<br>`;
+                            html += `Type: ${escapeHtml(ddata.type || 'unknown')}`;
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                    }
+                } else {
+                    html += '<p class="error">LedFX not connected</p>';
+                }
+                html += '</section>';
+
+                container.innerHTML = html;
+
+                // Update last update time
+                document.getElementById('last-update').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (error) {
+                console.error('Error fetching LedFX data:', error);
+                document.getElementById('ledfx-container').innerHTML = `<p class="error">Error loading LedFX data: ${escapeHtml(error.message)}</p>`;
+                document.getElementById('last-update').textContent = 'Error loading data';
+            }
+        }
+
+        // Initial load
+        refreshLedFX();
+
+        // Auto-refresh every 5 seconds
+        refreshInterval = setInterval(refreshLedFX, 5000);
+
+        // Clear interval on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

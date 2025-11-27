@@ -1,0 +1,33 @@
+# LedFX AirPlay Hook Configuration (YAML)
+# This file configures which LedFX virtuals should be controlled by AirPlay session hooks
+
+ledfx:
+  host: localhost
+  port: 8888
+
+hooks:
+  start:
+    enabled: true
+    all_virtuals: true  # true = control all virtuals, false = use virtuals list
+    # Specify virtuals with repeat counts (only used if all_virtuals: false):
+    virtuals: []
+    # Example:
+    # all_virtuals: false
+    # virtuals:
+    #   - id: dig-quad
+    #     repeats: 1
+    #   - id: floor-lamp-1
+    #     repeats: 2
+  end:
+    enabled: true
+    all_virtuals: true  # true = control all virtuals, false = use virtuals list
+    # Specify virtuals with repeat counts (only used if all_virtuals: false):
+    virtuals: []
+    # Example:
+    # all_virtuals: false
+    # virtuals:
+    #   - id: dig-quad
+    #     repeats: 1
+    #   - id: floor-lamp-1
+    #     repeats: 0  # 0 means don't control this virtual in end hook
+

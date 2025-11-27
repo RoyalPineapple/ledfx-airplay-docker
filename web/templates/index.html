@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airglow Status Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Airglow Status Dashboard</h1>
+            <nav>
+                <a href="/config">Configuration</a>
+                <a href="/ledfx">LedFX Details</a>
+            </nav>
+        </header>
+
+        <div id="status-container">
+            <p class="loading">Loading status...</p>
+        </div>
+
+        <div id="last-update" class="last-update"></div>
+    </div>
+
+    <script>
+        let refreshInterval = null;
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatStatus(status) {
+            return status ? '<span class="status-dot status-ok"></span> Yes' : '<span class="status-dot status-error"></span> No';
+        }
+
+        function formatVersion(version) {
+            return version ? ` (v${escapeHtml(version)})` : '';
+        }
+
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+
+                const container = document.getElementById('status-container');
+                let html = '';
+
+                // Container Status
+                html += '<section class="status-section">';
+                html += '<h2>Container Status</h2>';
+                html += '<div class="status-grid">';
+                html += `<div class="status-item"><span class="status-label">LedFX:</span> ${formatStatus(data.containers.ledfx.running)}${formatVersion(data.containers.ledfx.version)}</div>`;
+                html += `<div class="status-item"><span class="status-label">Shairport-Sync:</span> ${formatStatus(data.containers.shairport_sync.running)}${formatVersion(data.containers.shairport_sync.version)}</div>`;
+                html += '</div>';
+                html += '</section>';
+
+                // Audio System
+                html += '<section class="status-section">';
+                html += '<h2>Audio System</h2>';
+                html += '<div class="status-grid">';
+                const audio = data.audio || {};
+                html += `<div class="status-item"><span class="status-label">PulseAudio Available:</span> ${formatStatus(audio.pulseaudio?.available)}</div>`;
+                html += `<div class="status-item"><span class="status-label">Active Audio Streams:</span> ${audio.active_streams || 0}</div>`;
+                if (data.ledfx_audio_device?.configured_device) {
+                    const deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
+                    html += `<div class="status-item"><span class="status-label">LedFX Audio Device:</span> ${escapeHtml(deviceName)}</div>`;
+                }
+                html += '</div>';
+                html += '</section>';
+
+                // Playback Status
+                html += '<section class="status-section">';
+                html += '<h2>Playback Status</h2>';
+                html += '<div class="status-grid">';
+                html += `<div class="status-item"><span class="status-label">Shairport-Sync Playing:</span> ${formatStatus(audio.shairport_connected && !audio.shairport_corked)}</div>`;
+                html += `<div class="status-item"><span class="status-label">LedFX Streaming (API):</span> ${formatStatus(audio.ledfx_streaming_flag)}</div>`;
+                html += '</div>';
+                html += '</section>';
+
+                // LedFX Details
+                html += '<section class="status-section">';
+                html += '<h2>LedFX Details</h2>';
+                html += '<p><a href="/ledfx">View virtuals and devices →</a></p>';
+                html += '</section>';
+
+                // Diagnostics
+                html += '<section class="status-section">';
+                html += '<h2>Diagnostics</h2>';
+                html += '<button id="run-diagnostic" class="btn btn-secondary">Run Diagnostic Check</button>';
+                html += '<div id="diagnostic-output" class="diagnostic-output" style="display: none;"></div>';
+                html += '</section>';
+
+                container.innerHTML = html;
+
+                // Attach diagnostic button handler
+                const diagnosticBtn = document.getElementById('run-diagnostic');
+                if (diagnosticBtn) {
+                    diagnosticBtn.addEventListener('click', runDiagnostic);
+                }
+
+                // Update last update time
+                document.getElementById('last-update').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (error) {
+                console.error('Error fetching status:', error);
+                document.getElementById('status-container').innerHTML = `<p class="error">Error loading status: ${escapeHtml(error.message)}</p>`;
+                document.getElementById('last-update').textContent = 'Error loading status';
+            }
+        }
+
+        async function runDiagnostic() {
+            const btn = document.getElementById('run-diagnostic');
+            const output = document.getElementById('diagnostic-output');
+            
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+            output.style.display = 'block';
+            output.innerHTML = '<pre>Running diagnostic check...</pre>';
+
+            try {
+                const response = await fetch('/api/diagnose', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    output.innerHTML = `<pre class="error">Error: ${escapeHtml(data.error)}</pre>`;
+                } else {
+                    output.innerHTML = `<pre>${escapeHtml(data.output || '')}</pre>`;
+                }
+            } catch (error) {
+                output.innerHTML = `<pre class="error">Error: ${escapeHtml(error.message)}</pre>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Run Diagnostic Check';
+            }
+        }
+
+        // Initial load
+        refreshStatus();
+
+        // Auto-refresh every 10 seconds
+        refreshInterval = setInterval(refreshStatus, 10000);
+
+        // Clear interval on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
