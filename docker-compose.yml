@@ -60,7 +60,6 @@ services:
       # LedFx API connection for session hooks (can be overridden in config file)
       - LEDFX_HOST=localhost
       - LEDFX_PORT=8888
-      - LEDFX_VIRTUAL_IDS=dig-quad
       # Optional log location for the session hook prototype
       - LEDFX_HOOK_LOG=/var/log/shairport-sync/ledfx-session-hook.log
 

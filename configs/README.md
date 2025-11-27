@@ -28,16 +28,16 @@ Comma-separated list of LedFx virtual IDs to control when AirPlay connects/disco
 **Examples:**
 ```bash
 # Control a single virtual
-VIRTUAL_IDS="dig-quad"
+VIRTUAL_IDS="virtual-1"
 
 # Control multiple virtuals
-VIRTUAL_IDS="dig-quad,bedroom-strip,living-room"
+VIRTUAL_IDS="virtual-1,virtual-2,virtual-3"
 
 # Control all virtuals (leave empty or unset)
 VIRTUAL_IDS=""
 ```
 
-**Default:** `dig-quad`
+**Default:** (empty - controls all virtuals)
 
 #### LEDFX_HOST
 LedFx API hostname or IP address.
@@ -59,7 +59,7 @@ LedFx API port.
 2. **Or use environment variables** in `docker-compose.yml`:
    ```yaml
    environment:
-     - LEDFX_VIRTUAL_IDS=dig-quad,another-virtual
+     - LEDFX_VIRTUAL_IDS=virtual-1,virtual-2
    ```
 
 3. **Redeploy** to apply changes:

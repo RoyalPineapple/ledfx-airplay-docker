@@ -10,7 +10,7 @@ if [ -f /configs/ledfx-hooks.conf ]; then
 fi
 
 # Allow override via environment variables
-VIRTUAL_IDS="${LEDFX_VIRTUAL_IDS:-${VIRTUAL_IDS:-dig-quad}}"
+VIRTUAL_IDS="${LEDFX_VIRTUAL_IDS:-${VIRTUAL_IDS:-}}"
 LEDFX_HOST="${LEDFX_HOST:-localhost}"
 LEDFX_PORT="${LEDFX_PORT:-8888}"
 LOG_FILE="${LEDFX_HOOK_LOG:-/var/log/shairport-sync/ledfx-session-hook.log}"
