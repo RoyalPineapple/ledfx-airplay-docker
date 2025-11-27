@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="banner-container">
+        <img src="{{ url_for('static', filename='banner.jpg') }}" alt="Aurora Borealis" class="banner-image">
+    </div>
     <div class="container">
         <header>
             <h1>Airglow Configuration</h1>
@@ -33,15 +36,31 @@
                 <p class="section-description">Controls <code>run_this_before_entering_active_state</code></p>
                 
                 <div id="start-hook-config" class="hook-config-section" style="display: none;">
-                    <div class="virtual-selection-controls">
-                        <label class="checkbox-label all-virtuals-label">
-                            <input type="checkbox" id="start-all-virtuals" class="checkbox-input all-virtuals-checkbox">
-                            <span class="checkbox-text">All Virtuals</span>
-                        </label>
+                    <!-- Mode Tabs -->
+                    <div class="mode-tabs">
+                        <button type="button" class="mode-tab active" data-hook="start" data-mode="toggle">Toggle</button>
+                        <button type="button" class="mode-tab" data-hook="start" data-mode="scene">Scene</button>
                     </div>
 
-                    <div id="start-virtuals-list" class="virtuals-list" style="display: none;">
-                        <p class="loading">Loading virtuals...</p>
+                    <!-- Toggle Mode Content -->
+                    <div id="start-toggle-mode" class="mode-content">
+                        <div class="virtual-selection-controls">
+                            <label class="checkbox-label all-virtuals-label">
+                                <input type="checkbox" id="start-all-virtuals" class="checkbox-input all-virtuals-checkbox">
+                                <span class="checkbox-text">All Virtuals</span>
+                            </label>
+                        </div>
+
+                        <div id="start-virtuals-list" class="virtuals-list" style="display: none;">
+                            <p class="loading">Loading virtuals...</p>
+                        </div>
+                    </div>
+
+                    <!-- Scene Mode Content -->
+                    <div id="start-scene-mode" class="mode-content" style="display: none;">
+                        <div id="start-scenes-list" class="scenes-list">
+                            <p class="loading">Loading scenes...</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -59,15 +78,31 @@
                 <p class="section-description">Controls <code>run_this_after_exiting_active_state</code></p>
                 
                 <div id="end-hook-config" class="hook-config-section" style="display: none;">
-                    <div class="virtual-selection-controls">
-                        <label class="checkbox-label all-virtuals-label">
-                            <input type="checkbox" id="end-all-virtuals" class="checkbox-input all-virtuals-checkbox">
-                            <span class="checkbox-text">All Virtuals</span>
-                        </label>
+                    <!-- Mode Tabs -->
+                    <div class="mode-tabs">
+                        <button type="button" class="mode-tab active" data-hook="end" data-mode="toggle">Toggle</button>
+                        <button type="button" class="mode-tab" data-hook="end" data-mode="scene">Scene</button>
                     </div>
 
-                    <div id="end-virtuals-list" class="virtuals-list" style="display: none;">
-                        <p class="loading">Loading virtuals...</p>
+                    <!-- Toggle Mode Content -->
+                    <div id="end-toggle-mode" class="mode-content">
+                        <div class="virtual-selection-controls">
+                            <label class="checkbox-label all-virtuals-label">
+                                <input type="checkbox" id="end-all-virtuals" class="checkbox-input all-virtuals-checkbox">
+                                <span class="checkbox-text">All Virtuals</span>
+                            </label>
+                        </div>
+
+                        <div id="end-virtuals-list" class="virtuals-list" style="display: none;">
+                            <p class="loading">Loading virtuals...</p>
+                        </div>
+                    </div>
+
+                    <!-- Scene Mode Content -->
+                    <div id="end-scene-mode" class="mode-content" style="display: none;">
+                        <div id="end-scenes-list" class="scenes-list">
+                            <p class="loading">Loading scenes...</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -83,6 +118,7 @@
     <script>
         let configData = null;
         let availableVirtuals = [];
+        let availableScenes = [];
         let refreshInterval = null;
 
         // Escape HTML to prevent XSS
@@ -128,6 +164,7 @@
 
                 configData = data;
                 availableVirtuals = data.available_virtuals || [];
+                availableScenes = data.available_scenes || [];
 
                 // Update hook toggles
                 const startEnabled = data.hooks.start_hook_enabled !== false;
@@ -140,16 +177,52 @@
                 document.getElementById('start-hook-config').style.display = startEnabled ? 'block' : 'none';
                 document.getElementById('end-hook-config').style.display = endEnabled ? 'block' : 'none';
 
-                // Update virtual selection for each hook (only if enabled)
+                // Update configuration for each hook (only if enabled)
                 if (startEnabled) {
-                    updateVirtualSelection('start', data.virtuals.hooks?.start);
+                    updateHookConfig('start', data.virtuals.hooks?.start);
                 }
                 if (endEnabled) {
-                    updateVirtualSelection('end', data.virtuals.hooks?.end);
+                    updateHookConfig('end', data.virtuals.hooks?.end);
                 }
 
             } catch (error) {
                 showError(`Failed to load configuration: ${error.message}`);
+            }
+        }
+
+        // Update hook configuration UI (mode, virtuals, scenes)
+        function updateHookConfig(hookType, hookConfig) {
+            if (!hookConfig) {
+                hookConfig = { enabled: true, mode: 'toggle', virtuals: [], all_virtuals: true, scenes: [] };
+            }
+
+            const mode = hookConfig.mode || 'toggle';
+            
+            // Update mode tabs
+            document.querySelectorAll(`.mode-tab[data-hook="${hookType}"]`).forEach(tab => {
+                if (tab.dataset.mode === mode) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Show/hide mode content
+            const toggleModeEl = document.getElementById(`${hookType}-toggle-mode`);
+            const sceneModeEl = document.getElementById(`${hookType}-scene-mode`);
+            toggleModeEl.style.display = mode === 'toggle' ? 'block' : 'none';
+            sceneModeEl.style.display = mode === 'scene' ? 'block' : 'none';
+
+            // Hide "All Virtuals" checkbox when mode is scene
+            const allVirtualsLabel = document.querySelector(`#${hookType}-all-virtuals`).closest('.all-virtuals-label');
+            if (allVirtualsLabel) {
+                allVirtualsLabel.style.display = mode === 'toggle' ? 'flex' : 'none';
+            }
+
+            if (mode === 'toggle') {
+                updateVirtualSelection(hookType, hookConfig);
+            } else {
+                updateSceneSelection(hookType, hookConfig);
             }
         }
 
@@ -174,6 +247,40 @@
                 listEl.style.display = 'block';
                 buildVirtualsList(hookType, selectedVirtuals);
             }
+        }
+
+        // Update scene selection UI for a hook
+        function updateSceneSelection(hookType, hookConfig) {
+            if (!hookConfig) {
+                hookConfig = { scenes: [] };
+            }
+
+            const selectedScenes = hookConfig.scenes || [];
+            buildScenesList(hookType, selectedScenes);
+        }
+
+        // Build scenes list HTML
+        function buildScenesList(hookType, selectedScenes) {
+            const listEl = document.getElementById(`${hookType}-scenes-list`);
+            listEl.innerHTML = '';
+
+            if (availableScenes.length === 0) {
+                const ledfxUrl = window.location.protocol + '//' + window.location.hostname + ':8888';
+                listEl.innerHTML = `<p class="no-virtuals">No scenes available. <a href="${ledfxUrl}" target="_blank">Open LedFX</a> to create scenes first, then refresh this page.</p>`;
+                return;
+            }
+
+            availableScenes.forEach(sid => {
+                const sceneDiv = document.createElement('div');
+                sceneDiv.className = 'scene-item';
+                sceneDiv.innerHTML = `
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="scene-checkbox" data-sid="${escapeHtml(sid)}" data-hook="${hookType}" ${selectedScenes.includes(sid) ? 'checked' : ''}>
+                        <span class="checkbox-text">${escapeHtml(sid)}</span>
+                    </label>
+                `;
+                listEl.appendChild(sceneDiv);
+            });
         }
 
         // Build virtuals list HTML
@@ -214,7 +321,7 @@
             const configSection = document.getElementById('start-hook-config');
             configSection.style.display = this.checked ? 'block' : 'none';
             if (this.checked && configData) {
-                updateVirtualSelection('start', configData.virtuals.hooks?.start);
+                updateHookConfig('start', configData.virtuals.hooks?.start);
             }
         });
 
@@ -222,8 +329,32 @@
             const configSection = document.getElementById('end-hook-config');
             configSection.style.display = this.checked ? 'block' : 'none';
             if (this.checked && configData) {
-                updateVirtualSelection('end', configData.virtuals.hooks?.end);
+                updateHookConfig('end', configData.virtuals.hooks?.end);
             }
+        });
+
+        // Handle mode tab switching
+        document.querySelectorAll('.mode-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const hookType = this.dataset.hook;
+                const mode = this.dataset.mode;
+                
+                // Update active tab
+                document.querySelectorAll(`.mode-tab[data-hook="${hookType}"]`).forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show/hide mode content
+                const toggleModeEl = document.getElementById(`${hookType}-toggle-mode`);
+                const sceneModeEl = document.getElementById(`${hookType}-scene-mode`);
+                toggleModeEl.style.display = mode === 'toggle' ? 'block' : 'none';
+                sceneModeEl.style.display = mode === 'scene' ? 'block' : 'none';
+                
+                // Hide/show "All Virtuals" checkbox based on mode
+                const allVirtualsLabel = document.querySelector(`#${hookType}-all-virtuals`).closest('.all-virtuals-label');
+                if (allVirtualsLabel) {
+                    allVirtualsLabel.style.display = mode === 'toggle' ? 'flex' : 'none';
+                }
+            });
         });
 
         // Handle "All Virtuals" checkbox changes
@@ -268,48 +399,78 @@
             try {
                 // Collect start hook configuration (only if enabled)
                 const startEnabled = document.getElementById('start-hook-enabled').checked;
+                let startMode = 'toggle';
                 let startAllVirtuals = true;
                 let startVirtuals = [];
+                let startScenes = [];
                 if (startEnabled) {
-                    startAllVirtuals = document.getElementById('start-all-virtuals').checked;
-                    if (!startAllVirtuals) {
-                        document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
-                            const vid = cb.dataset.vid;
-                            const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="start"][data-vid="${vid}"]`).value) || 1;
-                            if (repeats > 0) {
-                                startVirtuals.push({ id: vid, repeats: repeats });
-                            }
+                    // Get active mode
+                    const activeStartTab = document.querySelector(`.mode-tab[data-hook="start"].active`);
+                    startMode = activeStartTab ? activeStartTab.dataset.mode : 'toggle';
+                    
+                    if (startMode === 'toggle') {
+                        startAllVirtuals = document.getElementById('start-all-virtuals').checked;
+                        if (!startAllVirtuals) {
+                            document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
+                                const vid = cb.dataset.vid;
+                                const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="start"][data-vid="${vid}"]`).value) || 1;
+                                if (repeats > 0) {
+                                    startVirtuals.push({ id: vid, repeats: repeats });
+                                }
+                            });
+                        }
+                    } else {
+                        // Scene mode
+                        document.querySelectorAll('.scene-checkbox[data-hook="start"]:checked').forEach(cb => {
+                            startScenes.push(cb.dataset.sid);
                         });
                     }
                 }
 
                 // Collect end hook configuration (only if enabled)
                 const endEnabled = document.getElementById('end-hook-enabled').checked;
+                let endMode = 'toggle';
                 let endAllVirtuals = true;
                 let endVirtuals = [];
+                let endScenes = [];
                 if (endEnabled) {
-                    endAllVirtuals = document.getElementById('end-all-virtuals').checked;
-                    if (!endAllVirtuals) {
-                        document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
-                            const vid = cb.dataset.vid;
-                            const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="end"][data-vid="${vid}"]`).value) || 0;
-                            if (repeats > 0) {
-                                endVirtuals.push({ id: vid, repeats: repeats });
-                            }
+                    // Get active mode
+                    const activeEndTab = document.querySelector(`.mode-tab[data-hook="end"].active`);
+                    endMode = activeEndTab ? activeEndTab.dataset.mode : 'toggle';
+                    
+                    if (endMode === 'toggle') {
+                        endAllVirtuals = document.getElementById('end-all-virtuals').checked;
+                        if (!endAllVirtuals) {
+                            document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
+                                const vid = cb.dataset.vid;
+                                const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="end"][data-vid="${vid}"]`).value) || 0;
+                                if (repeats > 0) {
+                                    endVirtuals.push({ id: vid, repeats: repeats });
+                                }
+                            });
+                        }
+                    } else {
+                        // Scene mode
+                        document.querySelectorAll('.scene-checkbox[data-hook="end"]:checked').forEach(cb => {
+                            endScenes.push(cb.dataset.sid);
                         });
                     }
                 }
 
                 const configPayload = {
-                    start_enabled: document.getElementById('start-hook-enabled').checked,
-                    end_enabled: document.getElementById('end-hook-enabled').checked,
+                    start_enabled: startEnabled,
+                    end_enabled: endEnabled,
                     start_hook: {
+                        mode: startMode,
                         all_virtuals: startAllVirtuals,
-                        virtuals: startVirtuals
+                        virtuals: startVirtuals,
+                        scenes: startScenes
                     },
                     end_hook: {
+                        mode: endMode,
                         all_virtuals: endAllVirtuals,
-                        virtuals: endVirtuals
+                        virtuals: endVirtuals,
+                        scenes: endScenes
                     }
                 };
 
@@ -344,20 +505,23 @@
             }
         });
 
-        // Auto-refresh available virtuals list
-        async function refreshVirtuals() {
+        // Auto-refresh available virtuals and scenes lists
+        async function refreshLists() {
             try {
                 const response = await fetch('/api/config');
                 if (response.ok) {
                     const data = await response.json();
                     const newVirtuals = data.available_virtuals || [];
+                    const newScenes = data.available_scenes || [];
                     
-                    // Only update if list changed
-                    if (JSON.stringify(newVirtuals) !== JSON.stringify(availableVirtuals)) {
+                    // Only update if lists changed
+                    if (JSON.stringify(newVirtuals) !== JSON.stringify(availableVirtuals) ||
+                        JSON.stringify(newScenes) !== JSON.stringify(availableScenes)) {
                         availableVirtuals = newVirtuals;
+                        availableScenes = newScenes;
                         if (configData) {
-                            updateVirtualSelection('start', configData.virtuals.hooks?.start);
-                            updateVirtualSelection('end', configData.virtuals.hooks?.end);
+                            updateHookConfig('start', configData.virtuals.hooks?.start);
+                            updateHookConfig('end', configData.virtuals.hooks?.end);
                         }
                     }
                 }
@@ -369,8 +533,8 @@
         // Initial load
         loadConfig();
 
-        // Refresh virtuals list every 10 seconds
-        refreshInterval = setInterval(refreshVirtuals, 10000);
+        // Refresh virtuals and scenes lists every 10 seconds
+        refreshInterval = setInterval(refreshLists, 10000);
 
         // Clear interval on page unload
         window.addEventListener('beforeunload', () => {

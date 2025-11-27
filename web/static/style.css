@@ -26,6 +26,24 @@ body {
     color: var(--color-text);
     line-height: 1.6;
     padding: var(--spacing);
+    padding-top: 0;
+}
+
+.banner-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+}
+
+.banner-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    max-height: 300px;
 }
 
 .container {
@@ -343,11 +361,48 @@ nav a:hover {
     gap: 0.5rem;
 }
 
-.virtuals-list {
+.mode-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: var(--spacing);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.mode-tab {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-text-light);
+    transition: all 0.2s;
+    margin-bottom: -2px;
+}
+
+.mode-tab:hover {
+    color: var(--color-text);
+    background: var(--color-bg-section);
+}
+
+.mode-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+.mode-content {
     margin-top: var(--spacing);
 }
 
-.virtual-item {
+.virtuals-list,
+.scenes-list {
+    margin-top: var(--spacing);
+}
+
+.virtual-item,
+.scene-item {
     margin-bottom: var(--spacing);
     padding: var(--spacing);
     background: var(--color-bg-section);

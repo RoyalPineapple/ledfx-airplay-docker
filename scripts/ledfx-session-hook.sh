@@ -87,12 +87,27 @@ case "$action" in
       exit 0
     fi
     
-    log_entry "INFO" "Calling ledfx-start.sh for virtual(s) ${VIRTUAL_IDS}"
-    /scripts/ledfx-start.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
-      log_entry "ERROR" "Failed to start LedFx"
-      exit 1
-    }
-    log_entry "INFO" "LedFx started successfully"
+    # Check mode from YAML config
+    mode="toggle"
+    if [ -f /configs/ledfx-hooks.yaml ]; then
+      mode=$(yq eval '.hooks.start.mode // "toggle"' /configs/ledfx-hooks.yaml 2>/dev/null || echo "toggle")
+    fi
+    
+    if [ "$mode" = "scene" ]; then
+      log_entry "INFO" "Calling ledfx-scene.sh for scene(s)"
+      HOOK_TYPE="start" /scripts/ledfx-scene.sh "" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+        log_entry "ERROR" "Failed to activate scene(s)"
+        exit 1
+      }
+      log_entry "INFO" "Scene(s) activated successfully"
+    else
+      log_entry "INFO" "Calling ledfx-start.sh for virtual(s) ${VIRTUAL_IDS}"
+      /scripts/ledfx-start.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+        log_entry "ERROR" "Failed to start LedFx"
+        exit 1
+      }
+      log_entry "INFO" "LedFx started successfully"
+    fi
     ;;
   stop)
     if [ $# -gt 0 ]; then
@@ -107,12 +122,27 @@ case "$action" in
       exit 0
     fi
     
-    log_entry "INFO" "Calling ledfx-stop.sh for virtual(s) ${VIRTUAL_IDS}"
-    /scripts/ledfx-stop.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
-      log_entry "ERROR" "Failed to stop LedFx"
-      exit 1
-    }
-    log_entry "INFO" "LedFx stopped successfully"
+    # Check mode from YAML config
+    mode="toggle"
+    if [ -f /configs/ledfx-hooks.yaml ]; then
+      mode=$(yq eval '.hooks.end.mode // "toggle"' /configs/ledfx-hooks.yaml 2>/dev/null || echo "toggle")
+    fi
+    
+    if [ "$mode" = "scene" ]; then
+      log_entry "INFO" "Calling ledfx-scene.sh for scene(s)"
+      HOOK_TYPE="end" /scripts/ledfx-scene.sh "" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+        log_entry "ERROR" "Failed to activate scene(s)"
+        exit 1
+      }
+      log_entry "INFO" "Scene(s) activated successfully"
+    else
+      log_entry "INFO" "Calling ledfx-stop.sh for virtual(s) ${VIRTUAL_IDS}"
+      /scripts/ledfx-stop.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+        log_entry "ERROR" "Failed to stop LedFx"
+        exit 1
+      }
+      log_entry "INFO" "LedFx stopped successfully"
+    fi
     ;;
   log)
     # Log-only action for play_begins/play_ends callbacks

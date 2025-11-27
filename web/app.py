@@ -163,6 +163,30 @@ def get_ledfx_devices():
     return {'connected': False, 'devices': {}}
 
 
+def get_ledfx_scenes():
+    """Get LedFX scenes"""
+    try:
+        result = subprocess.run(
+            ['curl', '-s', '-f', f'{LEDFX_URL}/api/scenes'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            scenes = {}
+            if 'scenes' in data:
+                for sid, sdata in data['scenes'].items():
+                    scenes[sid] = {
+                        'name': sdata.get('name', sid),
+                        'virtuals': sdata.get('virtuals', [])
+                    }
+            return {'connected': True, 'scenes': scenes}
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, subprocess.SubprocessError):
+        pass
+    return {'connected': False, 'scenes': {}}
+
+
 def get_ledfx_audio_device():
     """Get LedFX configured audio device name and index
     Returns the actual device name (e.g., 'ALSA: pulse') not just the index
@@ -364,13 +388,17 @@ def get_virtual_config():
                 'hooks': {
                     'start': {
                         'enabled': start_hook.get('enabled', True),
+                        'mode': start_hook.get('mode', 'toggle'),  # 'toggle' or 'scene'
                         'virtuals': start_virtuals,
-                        'all_virtuals': start_all_virtuals
+                        'all_virtuals': start_all_virtuals,
+                        'scenes': start_hook.get('scenes', [])  # List of scene IDs
                     },
                     'end': {
                         'enabled': end_hook.get('enabled', True),
+                        'mode': end_hook.get('mode', 'toggle'),  # 'toggle' or 'scene'
                         'virtuals': end_virtuals,
-                        'all_virtuals': end_all_virtuals
+                        'all_virtuals': end_all_virtuals,
+                        'scenes': end_hook.get('scenes', [])  # List of scene IDs
                     }
                 }
             }
@@ -397,13 +425,17 @@ def get_virtual_config():
                 'hooks': {
                     'start': {
                         'enabled': True,
+                        'mode': 'toggle',  # Legacy config defaults to toggle
                         'virtuals': virtuals_list,
-                        'all_virtuals': all_virtuals
+                        'all_virtuals': all_virtuals,
+                        'scenes': []
                     },
                     'end': {
                         'enabled': True,
+                        'mode': 'toggle',  # Legacy config defaults to toggle
                         'virtuals': virtuals_list,
-                        'all_virtuals': all_virtuals
+                        'all_virtuals': all_virtuals,
+                        'scenes': []
                     }
                 }
             }
@@ -414,13 +446,17 @@ def get_virtual_config():
             'hooks': {
                 'start': {
                     'enabled': False,
+                    'mode': 'toggle',  # Default to toggle mode
                     'virtuals': [],
-                    'all_virtuals': True  # Explicit flag, not inferred from empty list
+                    'all_virtuals': True,  # Explicit flag, not inferred from empty list
+                    'scenes': []
                 },
                 'end': {
                     'enabled': False,
+                    'mode': 'toggle',  # Default to toggle mode
                     'virtuals': [],
-                    'all_virtuals': True  # Explicit flag, not inferred from empty list
+                    'all_virtuals': True,  # Explicit flag, not inferred from empty list
+                    'scenes': []
                 }
             }
         }
@@ -448,13 +484,17 @@ def save_virtual_config(config_data):
             'hooks': {
                 'start': {
                     'enabled': config_data.get('start_enabled', True),
+                    'mode': start_hook_data.get('mode', 'toggle'),  # 'toggle' or 'scene'
                     'all_virtuals': start_hook_data.get('all_virtuals', True),
-                    'virtuals': start_hook_data.get('virtuals', [])
+                    'virtuals': start_hook_data.get('virtuals', []),
+                    'scenes': start_hook_data.get('scenes', [])  # List of scene IDs
                 },
                 'end': {
                     'enabled': config_data.get('end_enabled', True),
+                    'mode': end_hook_data.get('mode', 'toggle'),  # 'toggle' or 'scene'
                     'all_virtuals': end_hook_data.get('all_virtuals', True),
-                    'virtuals': end_hook_data.get('virtuals', [])
+                    'virtuals': end_hook_data.get('virtuals', []),
+                    'scenes': end_hook_data.get('scenes', [])  # List of scene IDs
                 }
             }
         }
@@ -539,10 +579,15 @@ def get_config():
         # Get list of available virtual IDs
         available_virtuals = list(virtuals_list.get('virtuals', {}).keys()) if virtuals_list.get('connected') else []
         
+        # Get list of available scenes
+        scenes_list = get_ledfx_scenes()
+        available_scenes = list(scenes_list.get('scenes', {}).keys()) if scenes_list.get('connected') else []
+        
         return jsonify({
             'hooks': hook_config,
             'virtuals': virtual_config,
-            'available_virtuals': available_virtuals
+            'available_virtuals': available_virtuals,
+            'available_scenes': available_scenes
         })
     except Exception as e:
         logger.error(f"Error getting config: {e}")
@@ -566,38 +611,68 @@ def save_config():
         start_hook_data = data.get('start_hook', {})
         end_hook_data = data.get('end_hook', {})
         
+        start_mode = start_hook_data.get('mode', 'toggle')
+        end_mode = end_hook_data.get('mode', 'toggle')
+        
         start_all_virtuals = start_hook_data.get('all_virtuals', True)
         start_virtuals = start_hook_data.get('virtuals', [])
+        start_scenes = start_hook_data.get('scenes', [])
         end_all_virtuals = end_hook_data.get('all_virtuals', True)
         end_virtuals = end_hook_data.get('virtuals', [])
+        end_scenes = end_hook_data.get('scenes', [])
         
-        # Validate virtual IDs if specific virtuals are selected
-        virtuals_list = get_ledfx_virtuals()
-        available_virtuals = set(virtuals_list.get('virtuals', {}).keys()) if virtuals_list.get('connected') else set()
+        # Validate mode values
+        if start_mode not in ['toggle', 'scene']:
+            return jsonify({'error': f'Invalid mode for start hook: {start_mode}. Must be "toggle" or "scene"'}), 400
+        if end_mode not in ['toggle', 'scene']:
+            return jsonify({'error': f'Invalid mode for end hook: {end_mode}. Must be "toggle" or "scene"'}), 400
         
-        # Validate start hook virtuals
-        if not start_all_virtuals and start_virtuals:
-            for v in start_virtuals:
-                vid = v.get('id')
-                if vid and vid not in available_virtuals:
-                    return jsonify({'error': f'Invalid virtual ID in start hook: {vid}'}), 400
-                
-                # Validate repeat counts
-                repeats = v.get('repeats', 1)
-                if not isinstance(repeats, int) or repeats < 0:
-                    return jsonify({'error': f'Invalid repeats for {vid} in start hook: must be integer >= 0'}), 400
+        # Validate virtual IDs if toggle mode and specific virtuals are selected
+        if start_mode == 'toggle':
+            virtuals_list = get_ledfx_virtuals()
+            available_virtuals = set(virtuals_list.get('virtuals', {}).keys()) if virtuals_list.get('connected') else set()
+            
+            # Validate start hook virtuals
+            if not start_all_virtuals and start_virtuals:
+                for v in start_virtuals:
+                    vid = v.get('id')
+                    if vid and vid not in available_virtuals:
+                        return jsonify({'error': f'Invalid virtual ID in start hook: {vid}'}), 400
+                    
+                    # Validate repeat counts
+                    repeats = v.get('repeats', 1)
+                    if not isinstance(repeats, int) or repeats < 0:
+                        return jsonify({'error': f'Invalid repeats for {vid} in start hook: must be integer >= 0'}), 400
         
         # Validate end hook virtuals
-        if not end_all_virtuals and end_virtuals:
-            for v in end_virtuals:
-                vid = v.get('id')
-                if vid and vid not in available_virtuals:
-                    return jsonify({'error': f'Invalid virtual ID in end hook: {vid}'}), 400
-                
-                # Validate repeat counts
-                repeats = v.get('repeats', 0)
-                if not isinstance(repeats, int) or repeats < 0:
-                    return jsonify({'error': f'Invalid repeats for {vid} in end hook: must be integer >= 0'}), 400
+        if end_mode == 'toggle':
+            if not end_all_virtuals and end_virtuals:
+                for v in end_virtuals:
+                    vid = v.get('id')
+                    if vid and vid not in available_virtuals:
+                        return jsonify({'error': f'Invalid virtual ID in end hook: {vid}'}), 400
+                    
+                    # Validate repeat counts
+                    repeats = v.get('repeats', 0)
+                    if not isinstance(repeats, int) or repeats < 0:
+                        return jsonify({'error': f'Invalid repeats for {vid} in end hook: must be integer >= 0'}), 400
+        
+        # Validate scene IDs if scene mode
+        if start_mode == 'scene':
+            scenes_list = get_ledfx_scenes()
+            available_scenes = set(scenes_list.get('scenes', {}).keys()) if scenes_list.get('connected') else set()
+            
+            for sid in start_scenes:
+                if sid not in available_scenes:
+                    return jsonify({'error': f'Invalid scene ID in start hook: {sid}'}), 400
+        
+        if end_mode == 'scene':
+            scenes_list = get_ledfx_scenes()
+            available_scenes = set(scenes_list.get('scenes', {}).keys()) if scenes_list.get('connected') else set()
+            
+            for sid in end_scenes:
+                if sid not in available_scenes:
+                    return jsonify({'error': f'Invalid scene ID in end hook: {sid}'}), 400
         
         # Save virtual configuration (includes hook enable/disable in YAML)
         # No restart needed - hook scripts check YAML dynamically
@@ -607,12 +682,16 @@ def save_config():
             'start_enabled': start_enabled,
             'end_enabled': end_enabled,
             'start_hook': {
+                'mode': start_mode,
                 'all_virtuals': start_all_virtuals,
-                'virtuals': start_virtuals
+                'virtuals': start_virtuals,
+                'scenes': start_scenes
             },
             'end_hook': {
+                'mode': end_mode,
                 'all_virtuals': end_all_virtuals,
-                'virtuals': end_virtuals
+                'virtuals': end_virtuals,
+                'scenes': end_scenes
             }
         }
         virtual_result = save_virtual_config(virtual_config_data)
