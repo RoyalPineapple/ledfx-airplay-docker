@@ -32,15 +32,17 @@
                 </div>
                 <p class="section-description">Controls <code>run_this_before_entering_active_state</code></p>
                 
-                <div class="virtual-selection-controls">
-                    <label class="checkbox-label all-virtuals-label">
-                        <input type="checkbox" id="start-all-virtuals" class="checkbox-input all-virtuals-checkbox">
-                        <span class="checkbox-text">All Virtuals</span>
-                    </label>
-                </div>
+                <div id="start-hook-config" class="hook-config-section" style="display: none;">
+                    <div class="virtual-selection-controls">
+                        <label class="checkbox-label all-virtuals-label">
+                            <input type="checkbox" id="start-all-virtuals" class="checkbox-input all-virtuals-checkbox">
+                            <span class="checkbox-text">All Virtuals</span>
+                        </label>
+                    </div>
 
-                <div id="start-virtuals-list" class="virtuals-list" style="display: none;">
-                    <p class="loading">Loading virtuals...</p>
+                    <div id="start-virtuals-list" class="virtuals-list" style="display: none;">
+                        <p class="loading">Loading virtuals...</p>
+                    </div>
                 </div>
             </section>
 
@@ -56,15 +58,17 @@
                 </div>
                 <p class="section-description">Controls <code>run_this_after_exiting_active_state</code></p>
                 
-                <div class="virtual-selection-controls">
-                    <label class="checkbox-label all-virtuals-label">
-                        <input type="checkbox" id="end-all-virtuals" class="checkbox-input all-virtuals-checkbox">
-                        <span class="checkbox-text">All Virtuals</span>
-                    </label>
-                </div>
+                <div id="end-hook-config" class="hook-config-section" style="display: none;">
+                    <div class="virtual-selection-controls">
+                        <label class="checkbox-label all-virtuals-label">
+                            <input type="checkbox" id="end-all-virtuals" class="checkbox-input all-virtuals-checkbox">
+                            <span class="checkbox-text">All Virtuals</span>
+                        </label>
+                    </div>
 
-                <div id="end-virtuals-list" class="virtuals-list" style="display: none;">
-                    <p class="loading">Loading virtuals...</p>
+                    <div id="end-virtuals-list" class="virtuals-list" style="display: none;">
+                        <p class="loading">Loading virtuals...</p>
+                    </div>
                 </div>
             </section>
 
@@ -126,12 +130,23 @@
                 availableVirtuals = data.available_virtuals || [];
 
                 // Update hook toggles
-                document.getElementById('start-hook-enabled').checked = data.hooks.start_hook_enabled !== false;
-                document.getElementById('end-hook-enabled').checked = data.hooks.end_hook_enabled !== false;
+                const startEnabled = data.hooks.start_hook_enabled !== false;
+                const endEnabled = data.hooks.end_hook_enabled !== false;
+                
+                document.getElementById('start-hook-enabled').checked = startEnabled;
+                document.getElementById('end-hook-enabled').checked = endEnabled;
 
-                // Update virtual selection for each hook
-                updateVirtualSelection('start', data.virtuals.hooks?.start);
-                updateVirtualSelection('end', data.virtuals.hooks?.end);
+                // Show/hide hook configuration sections based on enabled state
+                document.getElementById('start-hook-config').style.display = startEnabled ? 'block' : 'none';
+                document.getElementById('end-hook-config').style.display = endEnabled ? 'block' : 'none';
+
+                // Update virtual selection for each hook (only if enabled)
+                if (startEnabled) {
+                    updateVirtualSelection('start', data.virtuals.hooks?.start);
+                }
+                if (endEnabled) {
+                    updateVirtualSelection('end', data.virtuals.hooks?.end);
+                }
 
             } catch (error) {
                 showError(`Failed to load configuration: ${error.message}`);
@@ -192,6 +207,23 @@
             });
         }
 
+        // Handle hook enable/disable toggle changes
+        document.getElementById('start-hook-enabled').addEventListener('change', function() {
+            const configSection = document.getElementById('start-hook-config');
+            configSection.style.display = this.checked ? 'block' : 'none';
+            if (this.checked && configData) {
+                updateVirtualSelection('start', configData.virtuals.hooks?.start);
+            }
+        });
+
+        document.getElementById('end-hook-enabled').addEventListener('change', function() {
+            const configSection = document.getElementById('end-hook-config');
+            configSection.style.display = this.checked ? 'block' : 'none';
+            if (this.checked && configData) {
+                updateVirtualSelection('end', configData.virtuals.hooks?.end);
+            }
+        });
+
         // Handle "All Virtuals" checkbox changes
         document.getElementById('start-all-virtuals').addEventListener('change', function() {
             const listEl = document.getElementById('start-virtuals-list');
@@ -232,30 +264,38 @@
             saveStatus.textContent = 'Saving...';
 
             try {
-                // Collect start hook configuration
-                const startAllVirtuals = document.getElementById('start-all-virtuals').checked;
-                const startVirtuals = [];
-                if (!startAllVirtuals) {
-                    document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
-                        const vid = cb.dataset.vid;
-                        const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="start"][data-vid="${vid}"]`).value) || 1;
-                        if (repeats > 0) {
-                            startVirtuals.push({ id: vid, repeats: repeats });
-                        }
-                    });
+                // Collect start hook configuration (only if enabled)
+                const startEnabled = document.getElementById('start-hook-enabled').checked;
+                let startAllVirtuals = true;
+                let startVirtuals = [];
+                if (startEnabled) {
+                    startAllVirtuals = document.getElementById('start-all-virtuals').checked;
+                    if (!startAllVirtuals) {
+                        document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
+                            const vid = cb.dataset.vid;
+                            const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="start"][data-vid="${vid}"]`).value) || 1;
+                            if (repeats > 0) {
+                                startVirtuals.push({ id: vid, repeats: repeats });
+                            }
+                        });
+                    }
                 }
 
-                // Collect end hook configuration
-                const endAllVirtuals = document.getElementById('end-all-virtuals').checked;
-                const endVirtuals = [];
-                if (!endAllVirtuals) {
-                    document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
-                        const vid = cb.dataset.vid;
-                        const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="end"][data-vid="${vid}"]`).value) || 0;
-                        if (repeats > 0) {
-                            endVirtuals.push({ id: vid, repeats: repeats });
-                        }
-                    });
+                // Collect end hook configuration (only if enabled)
+                const endEnabled = document.getElementById('end-hook-enabled').checked;
+                let endAllVirtuals = true;
+                let endVirtuals = [];
+                if (endEnabled) {
+                    endAllVirtuals = document.getElementById('end-all-virtuals').checked;
+                    if (!endAllVirtuals) {
+                        document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
+                            const vid = cb.dataset.vid;
+                            const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="end"][data-vid="${vid}"]`).value) || 0;
+                            if (repeats > 0) {
+                                endVirtuals.push({ id: vid, repeats: repeats });
+                            }
+                        });
+                    }
                 }
 
                 const configPayload = {
