@@ -67,22 +67,6 @@
                 </div>
             </section>
 
-            <!-- LedFX Connection Section -->
-            <section class="config-section">
-                <h2>LedFX Connection</h2>
-                <p class="section-description">Configure LedFX API connection settings.</p>
-                
-                <div class="form-group">
-                    <label for="ledfx-host">Host:</label>
-                    <input type="text" id="ledfx-host" name="ledfx-host" value="localhost" class="form-input">
-                </div>
-                
-                <div class="form-group">
-                    <label for="ledfx-port">Port:</label>
-                    <input type="number" id="ledfx-port" name="ledfx-port" value="8888" class="form-input" min="1" max="65535">
-                </div>
-            </section>
-
             <!-- Save Button -->
             <div class="form-actions">
                 <button type="submit" id="save-btn" class="btn btn-primary">Save Configuration</button>
@@ -143,10 +127,6 @@
                 // Update hook toggles
                 document.getElementById('start-hook-enabled').checked = data.hooks.start_hook_enabled !== false;
                 document.getElementById('end-hook-enabled').checked = data.hooks.end_hook_enabled !== false;
-
-                // Update LedFX connection
-                document.getElementById('ledfx-host').value = data.virtuals.ledfx?.host || 'localhost';
-                document.getElementById('ledfx-port').value = data.virtuals.ledfx?.port || 8888;
 
                 // Update virtual selection for each hook
                 updateVirtualSelection('start', data.virtuals.hooks?.start);
@@ -280,8 +260,6 @@
                 const configPayload = {
                     start_enabled: document.getElementById('start-hook-enabled').checked,
                     end_enabled: document.getElementById('end-hook-enabled').checked,
-                    ledfx_host: document.getElementById('ledfx-host').value,
-                    ledfx_port: parseInt(document.getElementById('ledfx-port').value) || 8888,
                     start_hook: {
                         all_virtuals: startAllVirtuals,
                         virtuals: startVirtuals

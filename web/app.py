@@ -442,8 +442,8 @@ def save_virtual_config(config_data):
         
         yaml_data = {
             'ledfx': {
-                'host': config_data.get('ledfx_host', 'localhost'),
-                'port': config_data.get('ledfx_port', 8888)
+                'host': 'localhost',  # Fixed - not configurable
+                'port': 8888  # Fixed - not configurable
             },
             'hooks': {
                 'start': {
@@ -544,8 +544,10 @@ def save_config():
         # Validate input
         start_enabled = data.get('start_enabled', False)
         end_enabled = data.get('end_enabled', False)
-        ledfx_host = data.get('ledfx_host', 'localhost')
-        ledfx_port = data.get('ledfx_port', 8888)
+        
+        # LedFX connection is fixed (localhost:8888) - not configurable
+        ledfx_host = 'localhost'
+        ledfx_port = 8888
         
         start_hook_data = data.get('start_hook', {})
         end_hook_data = data.get('end_hook', {})
