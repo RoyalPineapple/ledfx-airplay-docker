@@ -302,9 +302,9 @@ def get_audio_status():
 
 
 def get_hook_config():
-    """Read hook enable/disable status from YAML (preferred) or shairport-sync.conf"""
+    """Read hook enable/disable status from YAML only"""
     try:
-        # Try YAML first
+        # Read from YAML only (shairport-sync.conf is never edited)
         if os.path.exists(HOOKS_YAML):
             with open(HOOKS_YAML, 'r') as f:
                 config = yaml.safe_load(f) or {}
@@ -315,32 +315,10 @@ def get_hook_config():
                 'end_hook_enabled': hooks_config.get('end_enabled', True)
             }
         
-        # Fallback to reading from shairport-sync.conf
-        if not os.path.exists(SHAIRPORT_CONF):
-            return {'error': 'shairport-sync.conf not found'}
-        
-        with open(SHAIRPORT_CONF, 'r') as f:
-            content = f.read()
-        
-        # Check hook lines
-        lines = content.split('\n')
-        start_hook_enabled = False
-        end_hook_enabled = False
-        
-        # Look for the hook lines
-        for i, line in enumerate(lines):
-            if 'run_this_before_entering_active_state' in line:
-                # Check if line is commented
-                if not line.strip().startswith('//') and '=' in line:
-                    start_hook_enabled = True
-            elif 'run_this_after_exiting_active_state' in line:
-                # Check if line is commented
-                if not line.strip().startswith('//') and '=' in line:
-                    end_hook_enabled = True
-        
+        # Default if YAML doesn't exist yet
         return {
-            'start_hook_enabled': start_hook_enabled,
-            'end_hook_enabled': end_hook_enabled
+            'start_hook_enabled': True,
+            'end_hook_enabled': True
         }
     except Exception as e:
         logger.error(f"Error reading hook config: {e}")
@@ -410,54 +388,8 @@ def get_virtual_config():
         return {'error': str(e) if app.debug else 'Error reading configuration'}
 
 
-def save_hook_config(start_enabled, end_enabled):
-    """Write hook enable/disable to shairport-sync.conf"""
-    try:
-        if not os.path.exists(SHAIRPORT_CONF):
-            return {'error': 'shairport-sync.conf not found'}
-        
-        with open(SHAIRPORT_CONF, 'r') as f:
-            lines = f.readlines()
-        
-        # Find and update hook lines
-        for i, line in enumerate(lines):
-            if 'run_this_before_entering_active_state' in line:
-                if start_enabled:
-                    # Ensure line is not commented - remove // if present
-                    if line.strip().startswith('//'):
-                        # Remove // comment, preserve tab indentation
-                        lines[i] = '\t' + line.lstrip().lstrip('/').lstrip()
-                    else:
-                        # Already uncommented, keep as is
-                        pass
-                else:
-                    # Comment out the line, preserve tab indentation
-                    if not line.strip().startswith('//'):
-                        # Add // at the start, preserve tab
-                        lines[i] = '\t//' + line.lstrip()
-            elif 'run_this_after_exiting_active_state' in line:
-                if end_enabled:
-                    # Ensure line is not commented - remove // if present
-                    if line.strip().startswith('//'):
-                        # Remove // comment, preserve tab indentation
-                        lines[i] = '\t' + line.lstrip().lstrip('/').lstrip()
-                    else:
-                        # Already uncommented, keep as is
-                        pass
-                else:
-                    # Comment out the line, preserve tab indentation
-                    if not line.strip().startswith('//'):
-                        # Add // at the start, preserve tab
-                        lines[i] = '\t//' + line.lstrip()
-        
-        # Write back to file
-        with open(SHAIRPORT_CONF, 'w') as f:
-            f.writelines(lines)
-        
-        return {'success': True}
-    except Exception as e:
-        logger.error(f"Error saving hook config: {e}")
-        return {'error': str(e) if app.debug else 'Error saving configuration'}
+# Note: save_hook_config() removed - we never edit shairport-sync.conf
+# Hook enable/disable is stored only in YAML and checked by hook scripts
 
 
 def save_virtual_config(config_data):
@@ -486,31 +418,6 @@ def save_virtual_config(config_data):
     except Exception as e:
         logger.error(f"Error saving virtual config: {e}")
         return {'error': str(e) if app.debug else 'Error saving configuration'}
-
-
-def restart_shairport_sync():
-    """Restart shairport-sync container"""
-    try:
-        result = subprocess.run(
-            ['docker', 'restart', 'shairport-sync'],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        if result.returncode == 0:
-            # Wait a moment and verify container is running
-            import time
-            time.sleep(2)
-            status = check_container_status('shairport-sync')
-            if status['running']:
-                return {'success': True}
-            else:
-                return {'error': 'Container restarted but not running'}
-        else:
-            return {'error': f'Restart failed: {result.stderr}'}
-    except Exception as e:
-        logger.error(f"Error restarting shairport-sync: {e}")
-        return {'error': str(e) if app.debug else 'Error restarting container'}
 
 
 @app.route('/')
@@ -611,12 +518,8 @@ def save_config():
                 if not isinstance(stop_repeats, int) or stop_repeats < 1:
                     return jsonify({'error': f'Invalid stop_repeats for {vid}: must be integer >= 1'}), 400
         
-        # Save hook configuration (requires restart)
-        hook_result = save_hook_config(start_enabled, end_enabled)
-        if 'error' in hook_result:
-            return jsonify(hook_result), 500
-        
-        # Save virtual configuration (no restart needed)
+        # Save virtual configuration (includes hook enable/disable in YAML)
+        # No restart needed - hook scripts check YAML dynamically
         virtual_config_data = {
             'ledfx_host': ledfx_host,
             'ledfx_port': ledfx_port,
@@ -627,15 +530,6 @@ def save_config():
         virtual_result = save_virtual_config(virtual_config_data)
         if 'error' in virtual_result:
             return jsonify(virtual_result), 500
-        
-        # Restart shairport-sync if hook config changed
-        restart_result = restart_shairport_sync()
-        if 'error' in restart_result:
-            # Configs saved but restart failed - still return success with warning
-            return jsonify({
-                'success': True,
-                'warning': f"Configuration saved but restart failed: {restart_result['error']}"
-            }), 200
         
         return jsonify({'success': True})
     except Exception as e:

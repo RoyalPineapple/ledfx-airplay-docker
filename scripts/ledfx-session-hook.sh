@@ -1,8 +1,33 @@
 #!/bin/sh
 # LedFx session hook - invoked by Shairport-Sync on AirPlay session changes
 # Calls ledfx-start.sh or ledfx-stop.sh based on AirPlay state
+# Checks YAML config to determine if hooks are enabled
 
 set -eu
+
+# Check if hooks are enabled from YAML config
+check_hook_enabled() {
+  local hook_type="$1"  # "start" or "end"
+  
+  # Try YAML first
+  if [ -f /configs/ledfx-hooks.yaml ]; then
+    if [ "$hook_type" = "start" ]; then
+      enabled=$(yq eval '.hooks.start_enabled // true' /configs/ledfx-hooks.yaml 2>/dev/null || echo "true")
+    else
+      enabled=$(yq eval '.hooks.end_enabled // true' /configs/ledfx-hooks.yaml 2>/dev/null || echo "true")
+    fi
+    
+    # yq returns "true" or "false" as strings, convert to exit code
+    if [ "$enabled" = "true" ]; then
+      return 0
+    else
+      return 1
+    fi
+  fi
+  
+  # Default to enabled if YAML doesn't exist
+  return 0
+}
 
 # Configuration - load from config file if available
 if [ -f /configs/ledfx-hooks.conf ]; then
@@ -55,6 +80,13 @@ case "$action" in
     else
       log_entry "START" "AirPlay session began"
     fi
+    
+    # Check if start hook is enabled
+    if ! check_hook_enabled "start"; then
+      log_entry "INFO" "Start hook is disabled in configuration, skipping"
+      exit 0
+    fi
+    
     log_entry "INFO" "Calling ledfx-start.sh for virtual(s) ${VIRTUAL_IDS}"
     /scripts/ledfx-start.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
       log_entry "ERROR" "Failed to start LedFx"
@@ -68,6 +100,13 @@ case "$action" in
     else
       log_entry "STOP" "AirPlay session ended"
     fi
+    
+    # Check if end hook is enabled
+    if ! check_hook_enabled "end"; then
+      log_entry "INFO" "End hook is disabled in configuration, skipping"
+      exit 0
+    fi
+    
     log_entry "INFO" "Calling ledfx-stop.sh for virtual(s) ${VIRTUAL_IDS}"
     /scripts/ledfx-stop.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
       log_entry "ERROR" "Failed to stop LedFx"
