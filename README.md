@@ -66,6 +66,22 @@ sudo ./install.sh
 
 ## Configuration
 
+### Web Interface
+
+Airglow includes a web interface for status monitoring and configuration:
+
+- **Status Dashboard**: `http://localhost:8080`
+- **Configuration Page**: `http://localhost:8080/config`
+- **LedFX Details**: `http://localhost:8080/ledfx`
+
+The configuration page allows you to:
+- Enable/disable AirPlay session hooks
+- Select which LedFX virtuals to control
+- Configure repeat counts per virtual (useful for Govee device reliability)
+- All changes take effect dynamically (no restart required)
+
+See [CONFIGURATION.md](CONFIGURATION.md) for detailed configuration documentation.
+
 ### Set AirPlay Device Name (Optional)
 Edit `configs/shairport-sync.conf` and change the `name` field:
 ```

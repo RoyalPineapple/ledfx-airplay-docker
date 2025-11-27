@@ -310,9 +310,12 @@ def get_hook_config():
                 config = yaml.safe_load(f) or {}
             
             hooks_config = config.get('hooks', {})
+            start_hook = hooks_config.get('start', {})
+            end_hook = hooks_config.get('end', {})
+            
             return {
-                'start_hook_enabled': hooks_config.get('start_enabled', True),
-                'end_hook_enabled': hooks_config.get('end_enabled', True)
+                'start_hook_enabled': start_hook.get('enabled', True),
+                'end_hook_enabled': end_hook.get('enabled', True)
             }
         
         # Default if YAML doesn't exist yet
@@ -335,10 +338,12 @@ def get_virtual_config():
             
             ledfx_config = config.get('ledfx', {})
             hooks_config = config.get('hooks', {})
-            virtuals_config = config.get('virtuals', {})
             
-            selected = virtuals_config.get('selected', [])
-            all_virtuals = len(selected) == 0
+            start_hook = hooks_config.get('start', {})
+            end_hook = hooks_config.get('end', {})
+            
+            start_virtuals = start_hook.get('virtuals', [])
+            end_virtuals = end_hook.get('virtuals', [])
             
             return {
                 'ledfx': {
@@ -346,11 +351,17 @@ def get_virtual_config():
                     'port': ledfx_config.get('port', 8888)
                 },
                 'hooks': {
-                    'start_enabled': hooks_config.get('start_enabled', True),
-                    'end_enabled': hooks_config.get('end_enabled', True)
-                },
-                'virtuals': selected,
-                'all_virtuals': all_virtuals
+                    'start': {
+                        'enabled': start_hook.get('enabled', True),
+                        'virtuals': start_virtuals,
+                        'all_virtuals': len(start_virtuals) == 0
+                    },
+                    'end': {
+                        'enabled': end_hook.get('enabled', True),
+                        'virtuals': end_virtuals,
+                        'all_virtuals': len(end_virtuals) == 0
+                    }
+                }
             }
         
         # Fallback to old .conf format for backward compatibility
@@ -367,21 +378,40 @@ def get_virtual_config():
                                 virtual_ids = [vid.strip() for vid in ids_str.split(',') if vid.strip()]
             
             all_virtuals = len(virtual_ids) == 0
-            selected = [] if all_virtuals else [{'id': vid, 'start_repeats': 1, 'stop_repeats': 1} for vid in virtual_ids]
+            # Convert old format to new format
+            virtuals_list = [] if all_virtuals else [{'id': vid, 'repeats': 1} for vid in virtual_ids]
             
             return {
                 'ledfx': {'host': 'localhost', 'port': 8888},
-                'hooks': {'start_enabled': True, 'end_enabled': True},
-                'virtuals': selected,
-                'all_virtuals': all_virtuals
+                'hooks': {
+                    'start': {
+                        'enabled': True,
+                        'virtuals': virtuals_list,
+                        'all_virtuals': all_virtuals
+                    },
+                    'end': {
+                        'enabled': True,
+                        'virtuals': virtuals_list,
+                        'all_virtuals': all_virtuals
+                    }
+                }
             }
         
         # Default if no config exists
         return {
             'ledfx': {'host': 'localhost', 'port': 8888},
-            'hooks': {'start_enabled': True, 'end_enabled': True},
-            'virtuals': [],
-            'all_virtuals': True
+            'hooks': {
+                'start': {
+                    'enabled': True,
+                    'virtuals': [],
+                    'all_virtuals': True
+                },
+                'end': {
+                    'enabled': True,
+                    'virtuals': [],
+                    'all_virtuals': True
+                }
+            }
         }
     except Exception as e:
         logger.error(f"Error reading virtual config: {e}")
