@@ -121,6 +121,7 @@
         let configData = null;
         let availableVirtuals = [];
         let availableScenes = [];
+        let hasDevices = false;
         let refreshInterval = null;
         let hasUnsavedChanges = false;
         let savedFormState = null;
@@ -169,6 +170,7 @@
                 configData = data;
                 availableVirtuals = data.available_virtuals || [];
                 availableScenes = data.available_scenes || [];
+                hasDevices = data.has_devices !== false;
 
                 // Update hook toggles
                 const startEnabled = data.hooks.start_hook_enabled !== false;
@@ -295,6 +297,13 @@
         function buildVirtualsList(hookType, selectedVirtuals) {
             const listEl = document.getElementById(`${hookType}-virtuals-list`);
             listEl.innerHTML = '';
+
+            // Check for devices first (primary check)
+            if (!hasDevices) {
+                const ledfxUrl = window.location.protocol + '//' + window.location.hostname + ':8888';
+                listEl.innerHTML = `<p class="no-virtuals">No LedFX devices configured. <a href="${ledfxUrl}" target="_blank">Open LedFX</a> to add devices first, then refresh this page.</p>`;
+                return;
+            }
 
             if (availableVirtuals.length === 0) {
                 // Get LedFX URL from window location (same host, different port)

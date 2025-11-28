@@ -583,11 +583,16 @@ def get_config():
         scenes_list = get_ledfx_scenes()
         available_scenes = list(scenes_list.get('scenes', {}).keys()) if scenes_list.get('connected') else []
         
+        # Get device count
+        devices_data = get_ledfx_devices()
+        has_devices = devices_data.get('connected') and len(devices_data.get('devices', {})) > 0
+        
         return jsonify({
             'hooks': hook_config,
             'virtuals': virtual_config,
             'available_virtuals': available_virtuals,
-            'available_scenes': available_scenes
+            'available_scenes': available_scenes,
+            'has_devices': has_devices
         })
     except Exception as e:
         logger.error(f"Error getting config: {e}")
