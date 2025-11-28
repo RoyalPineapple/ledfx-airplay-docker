@@ -38,7 +38,19 @@ LED Strips/Devices
 
 ## Quick Start
 
-### Method 1: Docker Compose (Manual)
+### Method 1: One-Line Install (Recommended)
+
+Install Airglow with a single command:
+```bash
+curl -fsSL https://raw.githubusercontent.com/RoyalPineapple/airglow/master/install.sh | sudo bash
+```
+
+For Apple ALAC decoder support (adds 5-10 minutes to installation):
+```bash
+curl -fsSL https://raw.githubusercontent.com/RoyalPineapple/airglow/master/install.sh | sudo bash -s -- --with-alac
+```
+
+### Method 2: Docker Compose (Manual)
 
 1. Clone the repository and enter the directory:
    ```bash
@@ -56,13 +68,21 @@ LED Strips/Devices
    ```
 4. Open the LedFX web UI: `http://localhost:8888`
 
-### Method 2: Install Script (Automated)
+### Method 3: Download Script First
 
-Run the installer which handles Docker installation and setup:
+If you prefer to download and inspect the script before running:
 ```bash
+curl -fsSL https://raw.githubusercontent.com/RoyalPineapple/airglow/master/install.sh -o install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
+
+Or with ALAC support:
+```bash
+sudo ./install.sh --with-alac
+```
+
+The installer handles Docker installation and setup automatically.
 
 ## Configuration
 

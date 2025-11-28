@@ -1,6 +1,106 @@
-# Custom Shairport-Sync image with jq for JSON parsing and yq for YAML parsing
-FROM mikebrady/shairport-sync:latest
+# Shairport-Sync with Apple ALAC decoder support
+# Built from source with --with-apple-alac flag
+FROM alpine:latest
 
-# Install jq for JSON parsing and yq for YAML parsing in hook scripts
-RUN apk add --no-cache jq yq
+# Version pins for reproducibility
+ARG SHAIRPORT_SYNC_VERSION=4.3.7
+ARG ALAC_VERSION=master
 
+# Install build dependencies
+RUN apk add --no-cache \
+    # Build tools (build-base includes gcc, g++, make, libc-dev, etc.)
+    build-base \
+    autoconf \
+    automake \
+    libtool \
+    git \
+    pkgconfig \
+    musl-dev \
+    linux-headers \
+    # Development headers
+    pulseaudio-dev \
+    avahi-dev \
+    openssl-dev \
+    libconfig-dev \
+    soxr-dev \
+    dbus-dev \
+    popt-dev \
+    # Runtime dependencies (will be needed later)
+    pulseaudio \
+    avahi \
+    avahi-libs \
+    openssl \
+    libconfig \
+    soxr \
+    dbus \
+    popt \
+    # Utilities for hook scripts
+    jq \
+    yq
+
+# Build ALAC library
+WORKDIR /tmp
+RUN git clone --depth 1 https://github.com/mikebrady/alac.git && \
+    cd alac && \
+    autoreconf -fi && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    (ldconfig 2>/dev/null || true) && \
+    cd .. && \
+    rm -rf alac
+
+# Build shairport-sync with Apple ALAC support
+RUN (git clone --depth 1 --branch ${SHAIRPORT_SYNC_VERSION} https://github.com/mikebrady/shairport-sync.git || \
+     git clone --depth 1 https://github.com/mikebrady/shairport-sync.git) && \
+    cd shairport-sync && \
+    autoreconf -fi && \
+    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH ./configure \
+        --with-apple-alac \
+        --with-pa \
+        --with-avahi \
+        --with-ssl=openssl \
+        --with-soxr \
+        --with-metadata \
+        --sysconfdir=/etc \
+        --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    (ldconfig 2>/dev/null || true) && \
+    cd .. && \
+    rm -rf shairport-sync
+
+# Clean up build dependencies to reduce image size
+RUN apk del \
+    build-base \
+    autoconf \
+    automake \
+    libtool \
+    git \
+    pkgconfig \
+    musl-dev \
+    linux-headers \
+    pulseaudio-dev \
+    avahi-dev \
+    openssl-dev \
+    libconfig-dev \
+    soxr-dev \
+    dbus-dev
+
+# Create directory for configuration and logs
+RUN mkdir -p /etc /var/log/shairport-sync /var/run/dbus
+
+# Verify installation
+RUN test -f /usr/local/bin/shairport-sync && shairport-sync -V || (echo "ERROR: shairport-sync binary not found or not executable" && exit 1)
+
+# Create startup script to run avahi-daemon and shairport-sync
+RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
+    echo 'dbus-daemon --system --nofork --nopidfile &' >> /usr/local/bin/start.sh && \
+    echo 'sleep 1' >> /usr/local/bin/start.sh && \
+    echo 'avahi-daemon -D' >> /usr/local/bin/start.sh && \
+    echo 'sleep 1' >> /usr/local/bin/start.sh && \
+    echo 'exec shairport-sync "$@"' >> /usr/local/bin/start.sh && \
+    chmod +x /usr/local/bin/start.sh
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/start.sh"]

@@ -10,7 +10,10 @@ VERSION="1.0.0"
 # Configuration
 INSTALL_DIR="/opt/airglow"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+REPO_URL="https://github.com/RoyalPineapple/airglow.git"
+REPO_RAW_URL="https://raw.githubusercontent.com/RoyalPineapple/airglow/master"
 DRY_RUN=false
+WITH_ALAC=false
 
 # Color output functions
 function msg_info() {
@@ -41,6 +44,8 @@ Options:
     -v, --version       Show version information
     -n, --dry-run       Show what would be done without making changes
     -d, --dir DIR       Set installation directory (default: /opt/airglow)
+    --with-alac         Build shairport-sync from source with Apple ALAC decoder
+                        (adds 5-10 minutes to installation, allows use of Apple Lossless)
 
 Description:
     Installs Docker (if needed) and deploys the Airglow
@@ -360,6 +365,9 @@ function copy_configs() {
 
     msg_ok "Configuration files deployed"
     
+    # Configure ALAC support if requested
+    configure_alac_support
+    
     # Initialize git repository for future updates (only if installing from a git repo)
     # This allows seamless updates via update-airglow.sh script
     if [[ "${DRY_RUN}" == false ]] && [[ -d "${INSTALL_DIR}" ]]; then
@@ -388,6 +396,179 @@ function copy_configs() {
     fi
 }
 
+# Configure ALAC support based on user preference
+function configure_alac_support() {
+    if [[ "${DRY_RUN}" == true ]]; then
+        if [[ "${WITH_ALAC}" == true ]]; then
+            msg_info "[DRY RUN] Would configure for Apple ALAC decoder support (build from source)"
+        else
+            msg_info "[DRY RUN] Would configure to use pre-built shairport-sync image (quick install)"
+        fi
+        return 0
+    fi
+
+    local dockerfile="${INSTALL_DIR}/Dockerfile.shairport-sync"
+
+    if [[ "${WITH_ALAC}" == true ]]; then
+        msg_info "Configuring for Apple ALAC decoder support (building from source)..."
+        
+        # Verify Dockerfile exists
+        if [[ ! -f "${dockerfile}" ]]; then
+            msg_error "Dockerfile.shairport-sync not found!"
+            msg_error "Expected full build Dockerfile for ALAC support"
+            exit 1
+        fi
+        
+        # Verify it's the ALAC build version (not the minimal one)
+        if grep -q "FROM mikebrady/shairport-sync:latest" "${dockerfile}"; then
+            msg_warn "Dockerfile appears to be minimal version, not ALAC build version"
+            msg_warn "Replacing with ALAC build Dockerfile..."
+            
+            # Create the ALAC build Dockerfile (embedded in script for one-shot install)
+            cat > "${dockerfile}" << 'DOCKERFILE_EOF'
+# Shairport-Sync with Apple ALAC decoder support
+# Built from source with --with-apple-alac flag
+FROM alpine:latest
+
+# Version pins for reproducibility
+ARG SHAIRPORT_SYNC_VERSION=4.3.7
+ARG ALAC_VERSION=master
+
+# Install build dependencies
+RUN apk add --no-cache \
+    # Build tools (build-base includes gcc, g++, make, libc-dev, etc.)
+    build-base \
+    autoconf \
+    automake \
+    libtool \
+    git \
+    pkgconfig \
+    musl-dev \
+    linux-headers \
+    # Development headers
+    pulseaudio-dev \
+    avahi-dev \
+    openssl-dev \
+    libconfig-dev \
+    soxr-dev \
+    dbus-dev \
+    popt-dev \
+    # Runtime dependencies (will be needed later)
+    pulseaudio \
+    avahi \
+    avahi-libs \
+    openssl \
+    libconfig \
+    soxr \
+    dbus \
+    popt \
+    # Utilities for hook scripts
+    jq \
+    yq
+
+# Build ALAC library
+WORKDIR /tmp
+RUN git clone --depth 1 https://github.com/mikebrady/alac.git && \
+    cd alac && \
+    autoreconf -fi && \
+    ./configure --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    (ldconfig 2>/dev/null || true) && \
+    cd .. && \
+    rm -rf alac
+
+# Build shairport-sync with Apple ALAC support
+RUN (git clone --depth 1 --branch ${SHAIRPORT_SYNC_VERSION} https://github.com/mikebrady/shairport-sync.git || \
+     git clone --depth 1 https://github.com/mikebrady/shairport-sync.git) && \
+    cd shairport-sync && \
+    autoreconf -fi && \
+    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH ./configure \
+        --with-apple-alac \
+        --with-pa \
+        --with-avahi \
+        --with-ssl=openssl \
+        --with-soxr \
+        --with-metadata \
+        --sysconfdir=/etc \
+        --prefix=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    (ldconfig 2>/dev/null || true) && \
+    cd .. && \
+    rm -rf shairport-sync
+
+# Clean up build dependencies to reduce image size
+RUN apk del \
+    build-base \
+    autoconf \
+    automake \
+    libtool \
+    git \
+    pkgconfig \
+    musl-dev \
+    linux-headers \
+    pulseaudio-dev \
+    avahi-dev \
+    openssl-dev \
+    libconfig-dev \
+    soxr-dev \
+    dbus-dev \
+    popt-dev
+
+# Create directory for configuration and logs
+RUN mkdir -p /etc /var/log/shairport-sync /var/run/dbus
+
+# Verify installation
+RUN test -f /usr/local/bin/shairport-sync && shairport-sync -V || (echo "ERROR: shairport-sync binary not found or not executable" && exit 1)
+
+# Create startup script to run avahi-daemon and shairport-sync
+RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
+    echo 'dbus-daemon --system --nofork --nopidfile &' >> /usr/local/bin/start.sh && \
+    echo 'sleep 1' >> /usr/local/bin/start.sh && \
+    echo 'avahi-daemon -D' >> /usr/local/bin/start.sh && \
+    echo 'sleep 1' >> /usr/local/bin/start.sh && \
+    echo 'exec shairport-sync "$@"' >> /usr/local/bin/start.sh && \
+    chmod +x /usr/local/bin/start.sh
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/start.sh"]
+DOCKERFILE_EOF
+            msg_ok "Created ALAC build Dockerfile"
+        else
+            # Verify it has ALAC build indicators
+            if ! grep -qE "(--with-apple-alac|alac\.git|ALACDecoder)" "${dockerfile}"; then
+                msg_warn "Dockerfile may not be configured for ALAC build"
+                msg_warn "Checking for ALAC build indicators..."
+            else
+                msg_ok "Dockerfile verified as ALAC build version"
+            fi
+        fi
+        
+        # No config change needed - Apple ALAC decoder is the default when built with --with-apple-alac
+        msg_ok "Apple ALAC decoder will be used (default when built with --with-apple-alac)"
+    else
+        msg_info "Using pre-built shairport-sync image (quick install, no ALAC decoder)..."
+        
+        # Replace Dockerfile with simple version that just extends base image
+        if [[ -f "${dockerfile}" ]]; then
+            cat > "${dockerfile}" << 'EOF'
+# Custom Shairport-Sync image with jq for JSON parsing and yq for YAML parsing
+FROM mikebrady/shairport-sync:latest
+
+# Install jq for JSON parsing and yq for YAML parsing in hook scripts
+RUN apk add --no-cache jq yq
+EOF
+            msg_ok "Created minimal Dockerfile (extends pre-built image)"
+        else
+            msg_warn "Dockerfile.shairport-sync not found, will be created during build"
+        fi
+
+        # No config change needed - pre-built image uses default Hammerton decoder
+        msg_ok "Using default decoder (Hammerton) from pre-built image"
+    fi
+}
+
 # Start the Docker Compose stack
 function start_stack() {
     msg_info "Starting Airglow stack..."
@@ -402,20 +583,54 @@ function start_stack() {
         exit 1
     }
 
-    # Pull images first
-    msg_info "Pulling Docker images (this may take a few minutes)..."
-    docker compose pull || {
-        msg_error "Failed to pull Docker images"
-        msg_error "Check your internet connection and Docker installation"
-        exit 1
+    # Pull pre-built images (non-fatal for build-based services)
+    msg_info "Pulling pre-built Docker images..."
+    docker compose pull 2>/dev/null || {
+        msg_info "Some services need to be built from source (this is expected)"
     }
 
-    # Start services
-    docker compose up -d || {
-        msg_error "Failed to start Docker stack"
-        msg_error "Check logs with: docker compose -f ${INSTALL_DIR}/docker-compose.yml logs"
-        exit 1
-    }
+    # Build and start services
+    if [[ "${WITH_ALAC}" == true ]]; then
+        msg_info "Building and starting services..."
+        msg_info "Note: Building shairport-sync from source with ALAC support may take 5-10 minutes..."
+        msg_info "This is a one-time build - subsequent starts will be much faster."
+        
+        # Verify Dockerfile exists before building
+        if [[ ! -f "${INSTALL_DIR}/Dockerfile.shairport-sync" ]]; then
+            msg_error "Dockerfile.shairport-sync not found! Cannot build with ALAC support."
+            exit 1
+        fi
+        
+        # Verify Dockerfile is the ALAC version
+        if grep -q "FROM mikebrady/shairport-sync:latest" "${INSTALL_DIR}/Dockerfile.shairport-sync"; then
+            msg_error "Dockerfile is minimal version, not ALAC build version!"
+            msg_error "ALAC support requires building from source. Please re-run with --with-alac flag."
+            exit 1
+        fi
+        
+        docker compose up -d --build || {
+            msg_error "Failed to start Docker stack"
+            msg_error "Check logs with: docker compose -f ${INSTALL_DIR}/docker-compose.yml logs"
+            exit 1
+        }
+        
+        # Verify build succeeded by checking shairport-sync version
+        msg_info "Verifying ALAC support in built image..."
+        sleep 5
+        if docker compose exec -T shairport-sync shairport-sync -V 2>&1 | grep -q "alac"; then
+            msg_ok "ALAC support verified in shairport-sync build"
+        else
+            msg_warn "Could not verify ALAC support - container may still be starting"
+            msg_warn "Check version manually: docker exec shairport-sync shairport-sync -V"
+        fi
+    else
+        msg_info "Starting services..."
+        docker compose up -d || {
+            msg_error "Failed to start Docker stack"
+            msg_error "Check logs with: docker compose -f ${INSTALL_DIR}/docker-compose.yml logs"
+            exit 1
+        }
+    fi
 
     msg_ok "Stack started successfully"
     
@@ -527,6 +742,10 @@ function parse_args() {
             -d|--dir)
                 INSTALL_DIR="$2"
                 shift 2
+                ;;
+            --with-alac)
+                WITH_ALAC=true
+                shift
                 ;;
             *)
                 msg_error "Unknown option: $1"

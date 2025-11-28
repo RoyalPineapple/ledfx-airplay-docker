@@ -58,17 +58,17 @@ echo "  Checking audio flow: AirPlay → Shairport-Sync → PulseAudio → LedFx
 echo "═══════════════════════════════════════════════════════════════"
 echo
 
-# Status output functions (no color codes)
+# Plain text output functions
 check_ok() {
-    echo "✓ $1"
+    echo "[OK] $1"
 }
 
 check_fail() {
-    echo "✗ $1"
+    echo "[ERROR] $1"
 }
 
 check_warn() {
-    echo "⚠ $1"
+    echo "[WARN] $1"
 }
 
 section() {
