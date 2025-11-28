@@ -39,7 +39,6 @@ body {
     background: transparent;
     aspect-ratio: 8 / 1; /* Short and wide header */
     max-height: 150px;
-    border-radius: var(--border-radius);
 }
 
 .banner-image {
