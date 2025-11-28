@@ -245,15 +245,15 @@
 
             // Update "All Virtuals" checkbox
             allVirtualsCheckbox.checked = allVirtualsChecked;
-            
-            // Hide "All Virtuals" checkbox if no devices are configured
+
+            // Hide "All Virtuals" checkbox if no virtuals are available
             const allVirtualsLabel = allVirtualsCheckbox.closest('.all-virtuals-label');
             if (allVirtualsLabel) {
-                allVirtualsLabel.style.display = hasDevices ? 'flex' : 'none';
+                allVirtualsLabel.style.display = availableVirtuals.length > 0 ? 'flex' : 'none';
             }
             
-            // If no devices, force all_virtuals to false
-            if (!hasDevices && allVirtualsChecked) {
+            // If no virtuals, force all_virtuals to false
+            if (availableVirtuals.length === 0 && allVirtualsChecked) {
                 allVirtualsCheckbox.checked = false;
                 hookConfig.all_virtuals = false;
             }
@@ -424,11 +424,11 @@
                     startMode = activeStartTab ? activeStartTab.dataset.mode : 'toggle';
                     
                     if (startMode === 'toggle') {
-                        // Only check "All Virtuals" if devices exist
-                        if (hasDevices) {
+                        // Only check "All Virtuals" if virtuals exist
+                        if (availableVirtuals.length > 0) {
                             startAllVirtuals = document.getElementById('start-all-virtuals').checked;
                         } else {
-                            startAllVirtuals = false; // Can't use all virtuals if no devices
+                            startAllVirtuals = false; // Can't use all virtuals if no virtuals available
                         }
                         if (!startAllVirtuals) {
                             document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
@@ -456,11 +456,11 @@
                     endMode = activeEndTab ? activeEndTab.dataset.mode : 'toggle';
                     
                     if (endMode === 'toggle') {
-                        // Only check "All Virtuals" if devices exist
-                        if (hasDevices) {
+                        // Only check "All Virtuals" if virtuals exist
+                        if (availableVirtuals.length > 0) {
                             endAllVirtuals = document.getElementById('end-all-virtuals').checked;
                         } else {
-                            endAllVirtuals = false; // Can't use all virtuals if no devices
+                            endAllVirtuals = false; // Can't use all virtuals if no virtuals available
                         }
                         if (!endAllVirtuals) {
                             document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
