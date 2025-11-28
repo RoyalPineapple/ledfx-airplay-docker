@@ -398,6 +398,53 @@
             markFormChanged();
         });
 
+        // Get current form state for comparison
+        function getFormState() {
+            const state = {
+                startEnabled: document.getElementById('start-hook-enabled').checked,
+                endEnabled: document.getElementById('end-hook-enabled').checked,
+                startMode: document.querySelector('.mode-tab[data-hook="start"].active')?.dataset.mode || 'toggle',
+                endMode: document.querySelector('.mode-tab[data-hook="end"].active')?.dataset.mode || 'toggle',
+                startAllVirtuals: document.getElementById('start-all-virtuals').checked,
+                endAllVirtuals: document.getElementById('end-all-virtuals').checked,
+                startVirtuals: [],
+                endVirtuals: [],
+                startScenes: [],
+                endScenes: []
+            };
+
+            // Collect virtual selections
+            document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
+                const vid = cb.dataset.vid;
+                const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="start"][data-vid="${vid}"]`)?.value) || 1;
+                state.startVirtuals.push({ id: vid, repeats: repeats });
+            });
+            document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
+                const vid = cb.dataset.vid;
+                const repeats = parseInt(document.querySelector(`.repeat-input[data-hook="end"][data-vid="${vid}"]`)?.value) || 0;
+                state.endVirtuals.push({ id: vid, repeats: repeats });
+            });
+
+            // Collect scene selections
+            document.querySelectorAll('.scene-checkbox[data-hook="start"]:checked').forEach(cb => {
+                state.startScenes.push(cb.dataset.sid);
+            });
+            document.querySelectorAll('.scene-checkbox[data-hook="end"]:checked').forEach(cb => {
+                state.endScenes.push(cb.dataset.sid);
+            });
+
+            return JSON.stringify(state);
+        }
+
+        // Check if there are unsaved changes by comparing current state with saved state
+        function checkUnsavedChanges() {
+            if (!savedFormState) {
+                return false;
+            }
+            const currentState = getFormState();
+            return currentState !== savedFormState;
+        }
+
         // Add change listeners to all form inputs
         function addFormChangeListeners() {
             // Listen for changes on checkboxes and inputs
