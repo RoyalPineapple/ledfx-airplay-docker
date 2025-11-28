@@ -29,7 +29,6 @@ LEDFX_URL = f"http://{LEDFX_HOST}:{LEDFX_PORT}"
 
 # Config file paths
 CONFIG_DIR = '/configs'
-SHAIRPORT_CONF = os.path.join(CONFIG_DIR, 'shairport-sync.conf')
 HOOKS_YAML = os.path.join(CONFIG_DIR, 'ledfx-hooks.yaml')
 
 # Rate limiting for diagnostic endpoint
