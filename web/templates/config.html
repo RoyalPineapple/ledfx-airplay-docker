@@ -363,6 +363,15 @@
                     allVirtualsLabel.style.display = mode === 'toggle' ? 'flex' : 'none';
                 }
                 
+                // Build scenes list if switching to scene mode and list hasn't been built yet
+                if (mode === 'scene') {
+                    const scenesListEl = document.getElementById(`${hookType}-scenes-list`);
+                    if (scenesListEl.innerHTML.includes('Loading')) {
+                        const hookConfig = configData?.virtuals?.hooks?.[hookType] || { scenes: [] };
+                        updateSceneSelection(hookType, hookConfig);
+                    }
+                }
+                
                 markFormChanged();
             });
         });
