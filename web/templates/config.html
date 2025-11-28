@@ -424,7 +424,12 @@
                     startMode = activeStartTab ? activeStartTab.dataset.mode : 'toggle';
                     
                     if (startMode === 'toggle') {
-                        startAllVirtuals = document.getElementById('start-all-virtuals').checked;
+                        // Only check "All Virtuals" if devices exist
+                        if (hasDevices) {
+                            startAllVirtuals = document.getElementById('start-all-virtuals').checked;
+                        } else {
+                            startAllVirtuals = false; // Can't use all virtuals if no devices
+                        }
                         if (!startAllVirtuals) {
                             document.querySelectorAll('.virtual-checkbox[data-hook="start"]:checked').forEach(cb => {
                                 const vid = cb.dataset.vid;
@@ -451,7 +456,12 @@
                     endMode = activeEndTab ? activeEndTab.dataset.mode : 'toggle';
                     
                     if (endMode === 'toggle') {
-                        endAllVirtuals = document.getElementById('end-all-virtuals').checked;
+                        // Only check "All Virtuals" if devices exist
+                        if (hasDevices) {
+                            endAllVirtuals = document.getElementById('end-all-virtuals').checked;
+                        } else {
+                            endAllVirtuals = false; // Can't use all virtuals if no devices
+                        }
                         if (!endAllVirtuals) {
                             document.querySelectorAll('.virtual-checkbox[data-hook="end"]:checked').forEach(cb => {
                                 const vid = cb.dataset.vid;
