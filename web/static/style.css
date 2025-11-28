@@ -155,15 +155,18 @@ nav a:hover {
 
 .status-section {
     margin-bottom: calc(var(--spacing) * 2);
-    padding: var(--spacing);
-    background: var(--color-bg);
+    padding: calc(var(--spacing) * 1.5);
+    background: var(--color-bg-section);
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .status-section h2 {
-    font-size: 1.5rem;
-    margin-bottom: var(--spacing);
+    font-size: 1.6rem;
+    margin-bottom: calc(var(--spacing) * 1.25);
     color: var(--color-text);
+    font-weight: 700;
 }
 
 .status-grid {
@@ -179,29 +182,33 @@ nav a:hover {
 }
 
 .status-label {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-text-light);
 }
 
 .status-value {
     color: var(--color-text);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 1.05rem;
 }
 
 .status-hint {
     color: var(--color-text-light);
-    font-size: 0.85rem;
-    font-weight: normal;
-    font-style: italic;
+    font-size: 0.9rem;
+    font-weight: 400;
+    font-style: normal;
     margin-left: 0.5rem;
+    opacity: 0.8;
 }
 
 .status-dot {
     display: inline-block;
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     margin-right: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
 }
 
 .status-dot.status-ok {
@@ -272,9 +279,9 @@ nav a:hover {
 
 .last-update {
     color: var(--color-text-light);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     margin: 0;
-    border-top: 1px solid var(--color-border);
+    font-weight: 400;
 }
 
 .btn {
@@ -765,4 +772,71 @@ code {
 .setup-content .btn {
     display: inline-block;
     margin-top: calc(var(--spacing) * 0.5);
+}
+
+/* Status Summary Card */
+.status-summary {
+    margin-bottom: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 1.5);
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid transparent;
+}
+
+.status-summary-ok {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-color: var(--color-success);
+}
+
+.status-summary-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-color: var(--color-warning);
+}
+
+.status-summary-error {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-color: var(--color-error);
+}
+
+.summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+}
+
+.summary-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text);
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing);
+}
+
+.summary-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.summary-value {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.summary-value.success {
+    color: var(--color-success);
+}
+
+.summary-value.error {
+    color: var(--color-error);
 }

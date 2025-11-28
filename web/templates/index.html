@@ -43,8 +43,22 @@
             return div.innerHTML;
         }
 
-        function formatStatus(status) {
-            return status ? '<span class="status-dot status-ok"></span> Yes' : '<span class="status-dot status-error"></span> No';
+        function formatStatus(status, labelTrue = 'Active', labelFalse = 'Inactive') {
+            if (status) {
+                return '<span class="status-dot status-ok"></span> ' + escapeHtml(labelTrue);
+            } else {
+                return '<span class="status-dot status-error"></span> ' + escapeHtml(labelFalse);
+            }
+        }
+
+        function formatStatusWithWarning(status, warning, labelTrue = 'Active', labelFalse = 'Inactive', labelWarning = 'Warning') {
+            if (warning) {
+                return '<span class="status-dot status-warning"></span> ' + escapeHtml(labelWarning);
+            } else if (status) {
+                return '<span class="status-dot status-ok"></span> ' + escapeHtml(labelTrue);
+            } else {
+                return '<span class="status-dot status-error"></span> ' + escapeHtml(labelFalse);
+            }
         }
 
         function formatVersion(version) {
@@ -62,12 +76,54 @@
                 const container = document.getElementById('status-container');
                 let html = '';
 
+                // Calculate overall system health
+                const containersRunning = data.containers.ledfx.running && data.containers.shairport_sync.running;
+                const audioSystemOk = data.audio?.pulseaudio?.available;
+                const shairportPlaying = data.audio?.shairport_connected && !data.audio?.shairport_corked;
+                const ledfxProcessing = data.audio?.ledfx_streaming_flag;
+                
+                let issues = 0;
+                if (!containersRunning) issues++;
+                if (!audioSystemOk) issues++;
+                if (!shairportPlaying && !ledfxProcessing) {
+                    // Only count as issue if both are inactive (normal idle state)
+                }
+                
+                const overallStatus = issues === 0 ? 'ok' : (issues <= 1 ? 'warning' : 'error');
+                const statusMessage = issues === 0 ? 'All Systems Operational' : 
+                                     (issues === 1 ? '1 Issue Detected' : `${issues} Issues Detected`);
+                
+                // Summary Card
+                html += '<section class="status-summary status-summary-' + overallStatus + '">';
+                html += '<div class="summary-content">';
+                html += '<h2 class="summary-title">' + escapeHtml(statusMessage) + '</h2>';
+                html += '<div class="summary-stats">';
+                html += '<div class="summary-stat">';
+                html += '<span class="summary-label">Containers:</span> ';
+                html += containersRunning ? '<span class="summary-value success">2 Running</span>' : '<span class="summary-value error">Issues</span>';
+                html += '</div>';
+                html += '<div class="summary-stat">';
+                html += '<span class="summary-label">Audio System:</span> ';
+                html += audioSystemOk ? '<span class="summary-value success">Connected</span>' : '<span class="summary-value error">Disconnected</span>';
+                html += '</div>';
+                html += '<div class="summary-stat">';
+                html += '<span class="summary-label">Playback:</span> ';
+                if (shairportPlaying || ledfxProcessing) {
+                    html += '<span class="summary-value success">Active</span>';
+                } else {
+                    html += '<span class="summary-value">Idle</span>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+                html += '</section>';
+
                 // Container Status
                 html += '<section class="status-section">';
                 html += '<h2>Container Status</h2>';
                 html += '<div class="status-grid">';
-                html += `<div class="status-item"><span class="status-label">LedFX:</span> ${formatStatus(data.containers.ledfx.running)}${formatVersion(data.containers.ledfx.version)}</div>`;
-                html += `<div class="status-item"><span class="status-label">Shairport-Sync:</span> ${formatStatus(data.containers.shairport_sync.running)}${formatVersion(data.containers.shairport_sync.version)}</div>`;
+                html += `<div class="status-item"><span class="status-label">LedFX:</span> ${formatStatus(data.containers.ledfx.running, 'Running', 'Stopped')}${formatVersion(data.containers.ledfx.version)}</div>`;
+                html += `<div class="status-item"><span class="status-label">Shairport-Sync:</span> ${formatStatus(data.containers.shairport_sync.running, 'Running', 'Stopped')}${formatVersion(data.containers.shairport_sync.version)}</div>`;
                 html += '</div>';
                 html += '</section>';
 
@@ -77,7 +133,7 @@
                 html += '<div class="status-grid">';
                 const audio = data.audio || {};
                 const pulseaudio = audio.pulseaudio || {};
-                html += `<div class="status-item"><span class="status-label">PulseAudio:</span> ${formatStatus(pulseaudio.available)}</div>`;
+                html += `<div class="status-item"><span class="status-label">PulseAudio:</span> ${formatStatus(pulseaudio.available, 'Connected', 'Disconnected')}</div>`;
                 html += `<div class="status-item"><span class="status-label">Active Streams:</span> <span class="status-value">${audio.active_streams || 0}</span></div>`;
                 if (data.ledfx_audio_device?.configured_device) {
                     const deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
@@ -91,8 +147,8 @@
                 html += '<h2>Playback Status</h2>';
                 html += '<div class="status-grid">';
                 const shairportPlaying = audio.shairport_connected && !audio.shairport_corked;
-                html += `<div class="status-item"><span class="status-label">AirPlay Active:</span> ${formatStatus(shairportPlaying)}${shairportPlaying ? '' : ' <span class="status-hint">(no active connection)</span>'}</div>`;
-                html += `<div class="status-item"><span class="status-label">LedFX Processing:</span> ${formatStatus(audio.ledfx_streaming_flag)}${audio.ledfx_streaming_flag ? '' : ' <span class="status-hint">(idle - no audio input)</span>'}</div>`;
+                html += `<div class="status-item"><span class="status-label">AirPlay Active:</span> ${formatStatus(shairportPlaying, 'Active', 'Inactive')}${shairportPlaying ? '' : ' <span class="status-hint">(no active connection)</span>'}</div>`;
+                html += `<div class="status-item"><span class="status-label">LedFX Processing:</span> ${formatStatus(audio.ledfx_streaming_flag, 'Active', 'Inactive')}${audio.ledfx_streaming_flag ? '' : ' <span class="status-hint">(idle - no audio input)</span>'}</div>`;
                 html += '</div>';
                 html += '</section>';
 
@@ -112,8 +168,10 @@
                     diagnosticBtn.addEventListener('click', runDiagnostic);
                 }
 
-                // Update last update time
-                document.getElementById('last-update').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                // Update last update time (simplified format)
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                document.getElementById('last-update').textContent = timeStr;
 
             } catch (error) {
                 console.error('Error fetching status:', error);
