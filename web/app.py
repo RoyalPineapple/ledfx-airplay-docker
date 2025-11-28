@@ -450,8 +450,8 @@ def _sanitize_airplay_name(name):
     trimmed = name.strip()
     if not trimmed:
         raise ValueError('AirPlay name cannot be empty.')
-    if len(trimmed) > 32:
-        raise ValueError('AirPlay name must be 32 characters or fewer.')
+    if len(trimmed) > 50:
+        raise ValueError('AirPlay name must be 50 characters or fewer (Shairport-Sync limit).')
     if '"' in trimmed or '\n' in trimmed or '\r' in trimmed:
         raise ValueError('AirPlay name cannot contain quotes or new lines.')
     return trimmed
