@@ -274,8 +274,8 @@
                 if (airplayNameInput) {
                     currentAirplayName = typeof data.airplay_name === 'string' ? data.airplay_name : '';
                     airplayNameInput.value = currentAirplayName;
-                    // Update restart button state after loading
-                    updateRestartButtonState();
+                    // Both buttons start disabled (even if name matches)
+                    updateAirplayButtonStates();
                 }
 
                 // Update hook toggles
@@ -444,22 +444,34 @@
             });
         }
 
-        function updateRestartButtonState() {
-            if (!restartShairportBtn || !airplayNameInput) return;
+        function updateAirplayButtonStates() {
+            if (!airplayNameInput) return;
             const hasUnsavedChanges = airplayNameInput.value.trim() !== currentAirplayName;
-            restartShairportBtn.disabled = hasUnsavedChanges;
+            
+            // Save button: enabled only when there are unsaved changes
+            if (saveAirplayNameBtn) {
+                saveAirplayNameBtn.disabled = !hasUnsavedChanges || airplayRequestInFlight;
+            }
+            
+            // Restart button: enabled only when there are no unsaved changes (config is saved)
+            if (restartShairportBtn) {
+                restartShairportBtn.disabled = hasUnsavedChanges;
+            }
         }
 
         function initAirplayControls() {
+            // Disable both buttons initially
             if (saveAirplayNameBtn) {
+                saveAirplayNameBtn.disabled = true;
                 saveAirplayNameBtn.addEventListener('click', handleAirplayNameSave);
             }
             if (restartShairportBtn) {
+                restartShairportBtn.disabled = true;
                 restartShairportBtn.addEventListener('click', handleShairportRestart);
             }
             if (airplayNameInput) {
-                // Disable restart button when user changes the name (creates unsaved changes)
-                airplayNameInput.addEventListener('input', updateRestartButtonState);
+                // Update button states when user changes the input
+                airplayNameInput.addEventListener('input', updateAirplayButtonStates);
             }
         }
 
@@ -476,11 +488,12 @@
             }
             if (newName === currentAirplayName) {
                 updateSaveStatus('AirPlay name is already set to that value.');
+                updateAirplayButtonStates();
                 return;
             }
 
             airplayRequestInFlight = true;
-            saveAirplayNameBtn.disabled = true;
+            updateAirplayButtonStates(); // Disable Save button during save
             updateSaveStatus('Saving AirPlay name...');
 
             try {
@@ -494,15 +507,14 @@
                     throw new Error(result.error || 'Failed to update AirPlay name.');
                 }
                 currentAirplayName = result.name || newName;
-                // Enable restart button after successful save
-                updateRestartButtonState();
                 showSuccess('AirPlay name saved. Restart Shairport-Sync to apply changes.');
                 updateSaveStatus('AirPlay name saved. Restart to apply.', 'success');
             } catch (error) {
                 showError(error.message || 'Failed to update AirPlay name.');
             } finally {
                 airplayRequestInFlight = false;
-                saveAirplayNameBtn.disabled = false;
+                // Update button states: Save disabled (no changes), Restart enabled (saved)
+                updateAirplayButtonStates();
             }
         }
 
@@ -525,8 +537,8 @@
                 }
                 showSuccess('Shairport-Sync restart triggered. Give it a few seconds to come back online.');
                 updateSaveStatus('Shairport-Sync restarted.', 'success');
-                // Disable restart button after restart (name is now active, no unsaved changes)
-                updateRestartButtonState();
+                // Button states remain: Save disabled, Restart enabled (no unsaved changes)
+                updateAirplayButtonStates();
             } catch (error) {
                 showError(error.message || 'Failed to restart shairport-sync.');
             } finally {
