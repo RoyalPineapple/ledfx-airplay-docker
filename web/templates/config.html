@@ -47,14 +47,14 @@
 
                     <!-- Toggle Mode Content -->
                     <div id="start-toggle-mode" class="mode-content">
-                        <div class="virtual-selection-controls">
+                        <div class="virtual-selection-controls" id="start-virtual-selection-controls" style="display: none;">
                             <label class="checkbox-label all-virtuals-label">
                                 <input type="checkbox" id="start-all-virtuals" class="checkbox-input all-virtuals-checkbox">
                                 <span class="checkbox-text">All Virtuals</span>
                             </label>
                         </div>
 
-                        <div id="start-virtuals-list" class="virtuals-list" style="display: none;">
+                        <div id="start-virtuals-list" class="virtuals-list">
                             <p class="loading">Loading virtuals...</p>
                         </div>
                     </div>
@@ -89,14 +89,14 @@
 
                     <!-- Toggle Mode Content -->
                     <div id="end-toggle-mode" class="mode-content">
-                        <div class="virtual-selection-controls">
+                        <div class="virtual-selection-controls" id="end-virtual-selection-controls" style="display: none;">
                             <label class="checkbox-label all-virtuals-label">
                                 <input type="checkbox" id="end-all-virtuals" class="checkbox-input all-virtuals-checkbox">
                                 <span class="checkbox-text">All Virtuals</span>
                             </label>
                         </div>
 
-                        <div id="end-virtuals-list" class="virtuals-list" style="display: none;">
+                        <div id="end-virtuals-list" class="virtuals-list">
                             <p class="loading">Loading virtuals...</p>
                         </div>
                     </div>
@@ -246,11 +246,11 @@
             // Update "All Virtuals" checkbox
             allVirtualsCheckbox.checked = allVirtualsChecked;
 
-            // Hide "All Virtuals" checkbox if no virtuals are available OR no devices are configured
-            const allVirtualsLabel = allVirtualsCheckbox.closest('.all-virtuals-label');
-            if (allVirtualsLabel) {
+            // Hide entire virtual selection controls section if no virtuals are available OR no devices are configured
+            const virtualSelectionControls = document.getElementById(`${hookType}-virtual-selection-controls`);
+            if (virtualSelectionControls) {
                 const shouldShow = hasDevices && availableVirtuals.length > 0;
-                allVirtualsLabel.style.display = shouldShow ? 'flex' : 'none';
+                virtualSelectionControls.style.display = shouldShow ? 'block' : 'none';
             }
             
             // If no virtuals or no devices, force all_virtuals to false
@@ -259,11 +259,14 @@
                 hookConfig.all_virtuals = false;
             }
             
-            // Show/hide virtuals list based on "All Virtuals" selection
-            if (allVirtualsChecked) {
-                listEl.style.display = 'none';
+            // Always show the virtuals list area and build it to show proper messages
+            listEl.style.display = 'block';
+            
+            // Show/hide virtuals list content based on "All Virtuals" selection
+            if (allVirtualsChecked && hasDevices && availableVirtuals.length > 0) {
+                // Hide the list content when "All Virtuals" is checked
+                listEl.innerHTML = '';
             } else {
-                listEl.style.display = 'block';
                 // Always build the list to show proper messages (no devices, no virtuals, or virtual list)
                 buildVirtualsList(hookType, selectedVirtuals);
             }
@@ -599,12 +602,12 @@
                     toggleModeEl.style.display = mode === 'toggle' ? 'block' : 'none';
                     sceneModeEl.style.display = mode === 'scene' ? 'block' : 'none';
                     
-                    // Hide/show "All Virtuals" checkbox based on mode AND device/virtual availability
-                    const allVirtualsLabel = document.querySelector(`#${hookType}-all-virtuals`).closest('.all-virtuals-label');
-                    if (allVirtualsLabel) {
+                    // Hide/show virtual selection controls based on mode AND device/virtual availability
+                    const virtualSelectionControls = document.getElementById(`${hookType}-virtual-selection-controls`);
+                    if (virtualSelectionControls) {
                         // Only show if toggle mode AND devices exist AND virtuals exist
                         const shouldShow = mode === 'toggle' && hasDevices && availableVirtuals.length > 0;
-                        allVirtualsLabel.style.display = shouldShow ? 'flex' : 'none';
+                        virtualSelectionControls.style.display = shouldShow ? 'block' : 'none';
                     }
                     
                     // If switching to toggle mode, update virtual selection to show proper messages
