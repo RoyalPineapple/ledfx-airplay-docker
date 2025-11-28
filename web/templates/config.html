@@ -264,6 +264,7 @@
                 listEl.style.display = 'none';
             } else {
                 listEl.style.display = 'block';
+                // Always build the list to show proper messages (no devices, no virtuals, or virtual list)
                 buildVirtualsList(hookType, selectedVirtuals);
             }
         }
@@ -598,10 +599,18 @@
                     toggleModeEl.style.display = mode === 'toggle' ? 'block' : 'none';
                     sceneModeEl.style.display = mode === 'scene' ? 'block' : 'none';
                     
-                    // Hide/show "All Virtuals" checkbox based on mode
+                    // Hide/show "All Virtuals" checkbox based on mode AND device/virtual availability
                     const allVirtualsLabel = document.querySelector(`#${hookType}-all-virtuals`).closest('.all-virtuals-label');
                     if (allVirtualsLabel) {
-                        allVirtualsLabel.style.display = mode === 'toggle' ? 'flex' : 'none';
+                        // Only show if toggle mode AND devices exist AND virtuals exist
+                        const shouldShow = mode === 'toggle' && hasDevices && availableVirtuals.length > 0;
+                        allVirtualsLabel.style.display = shouldShow ? 'flex' : 'none';
+                    }
+                    
+                    // If switching to toggle mode, update virtual selection to show proper messages
+                    if (mode === 'toggle') {
+                        const hookConfig = configData?.virtuals?.hooks?.[hookType] || { virtuals: [], all_virtuals: false };
+                        updateVirtualSelection(hookType, hookConfig);
                     }
                     
                     // Build scenes list if switching to scene mode and list hasn't been built yet
