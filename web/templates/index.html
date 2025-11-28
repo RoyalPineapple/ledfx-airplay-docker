@@ -146,7 +146,7 @@
                 html += '<section class="status-section">';
                 html += '<h2>Playback Status</h2>';
                 html += '<div class="status-grid">';
-                const shairportPlaying = audio.shairport_connected && !audio.shairport_corked;
+                // shairportPlaying already declared above for summary calculation
                 html += `<div class="status-item"><span class="status-label">AirPlay Active:</span> ${formatStatus(shairportPlaying, 'Active', 'Inactive')}${shairportPlaying ? '' : ' <span class="status-hint">(no active connection)</span>'}</div>`;
                 html += `<div class="status-item"><span class="status-label">LedFX Processing:</span> ${formatStatus(audio.ledfx_streaming_flag, 'Active', 'Inactive')}${audio.ledfx_streaming_flag ? '' : ' <span class="status-hint">(idle - no audio input)</span>'}</div>`;
                 html += '</div>';
