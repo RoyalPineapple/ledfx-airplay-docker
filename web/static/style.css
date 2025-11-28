@@ -256,29 +256,10 @@ nav a:hover {
 
 .status-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: var(--spacing);
     padding: var(--spacing);
-    background: var(--color-bg-section);
-    border-radius: var(--border-radius);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.status-header .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.status-header #refresh-icon {
-    display: inline-block;
-    transition: transform 0.3s;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
 }
 
 .last-update {
