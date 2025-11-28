@@ -300,14 +300,14 @@
 
             // Check for devices first (primary check)
             if (!hasDevices) {
-                const ledfxUrl = window.location.protocol + '//' + window.location.hostname + ':8888';
+                const ledfxUrl = window.location.protocol + '//' + window.location.hostname + ':8888/#/Devices';
                 listEl.innerHTML = `<p class="no-virtuals">No LedFX devices configured. <a href="${ledfxUrl}" target="_blank">Open LedFX</a> to add devices first, then refresh this page.</p>`;
                 return;
             }
 
             if (availableVirtuals.length === 0) {
                 // Get LedFX URL from window location (same host, different port)
-                const ledfxUrl = window.location.protocol + '//' + window.location.hostname + ':8888';
+                const ledfxUrl = window.location.protocol + '//' + window.location.hostname + ':8888/#/Virtuals';
                 listEl.innerHTML = `<p class="no-virtuals">No virtuals available. <a href="${ledfxUrl}" target="_blank">Open LedFX</a> to create virtuals first, then refresh this page.</p>`;
                 return;
             }
