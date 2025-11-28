@@ -336,6 +336,61 @@ function start_stack() {
     }
 
     msg_ok "Stack started successfully"
+    
+    # Wait for LedFX to be ready and set audio device via API
+    configure_ledfx_audio_device
+}
+
+# Configure LedFX audio device via API
+function configure_ledfx_audio_device() {
+    msg_info "Waiting for LedFX API to be ready..."
+    
+    local max_attempts=30
+    local attempt=0
+    local ledfx_ready=false
+    
+    # Wait for LedFX API to respond
+    while [[ $attempt -lt $max_attempts ]]; do
+        if curl -s -f "http://localhost:8888/api/info" >/dev/null 2>&1; then
+            ledfx_ready=true
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+    
+    if [[ "${ledfx_ready}" == false ]]; then
+        msg_warn "LedFX API did not become ready in time"
+        msg_warn "You may need to manually set the audio device to 'pulse' (index 0) in the LedFX UI"
+        return 1
+    fi
+    
+    msg_info "Setting LedFX audio device to pulse (index 0) via API..."
+    
+    # Set audio device via API
+    local response=$(curl -s -X PUT "http://localhost:8888/api/config" \
+        -H "Content-Type: application/json" \
+        -d '{"audio": {"audio_device": 0}}' 2>&1)
+    
+    if echo "${response}" | grep -q '"status": "success"'; then
+        msg_ok "LedFX audio device set to pulse (index 0)"
+        
+        # Verify the change
+        sleep 2
+        local active_device=$(curl -s "http://localhost:8888/api/audio/devices" | \
+            python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('active_device_index', 'unknown'))" 2>/dev/null || echo "unknown")
+        
+        if [[ "${active_device}" == "0" ]]; then
+            msg_ok "Verified: LedFX is using pulse audio device"
+        else
+            msg_warn "LedFX config updated, but active device is still index ${active_device}"
+            msg_warn "LedFX may need a restart to apply the change"
+        fi
+    else
+        msg_warn "Failed to set audio device via API: ${response}"
+        msg_warn "You may need to manually set the audio device to 'pulse' (index 0) in the LedFX UI"
+        return 1
+    fi
 }
 
 # Display installation status and next steps
