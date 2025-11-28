@@ -79,11 +79,7 @@
                 html += `<div class="status-item"><span class="status-label">PulseAudio:</span> ${formatStatus(audio.pulseaudio?.available)}</div>`;
                 html += `<div class="status-item"><span class="status-label">Active Streams:</span> <span class="status-value">${audio.active_streams || 0}</span></div>`;
                 if (data.ledfx_audio_device?.configured_device) {
-                    let deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
-                    // Make "default" more descriptive
-                    if (deviceName === 'default' || deviceName.toLowerCase() === 'pulse') {
-                        deviceName = 'PulseAudio';
-                    }
+                    const deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
                     html += `<div class="status-item"><span class="status-label">Audio Input:</span> <span class="status-value">${escapeHtml(deviceName)}</span></div>`;
                 }
                 html += '</div>';
