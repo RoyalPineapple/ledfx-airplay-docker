@@ -70,9 +70,9 @@ sudo ./install.sh
 
 Airglow includes a web interface for status monitoring and configuration:
 
-- **Status Dashboard**: `http://localhost:8080`
-- **Configuration Page**: `http://localhost:8080/config`
-- **LedFX Details**: `http://localhost:8080/ledfx`
+- **Status Dashboard**: `http://localhost`
+- **Configuration Page**: `http://localhost/config`
+- **LedFX Web Interface**: `http://localhost:8888`
 
 The configuration page allows you to:
 - Enable/disable AirPlay session hooks

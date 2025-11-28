@@ -67,7 +67,7 @@ Each virtual object contains:
 
 ## Web Interface
 
-Access the configuration page at: `http://airglow.office.lab:8080/config`
+Access the configuration page at: `http://airglow.office.lab/config`
 
 ### Start Hook Section
 
@@ -300,6 +300,6 @@ Saves configuration changes:
 
 - **Configuration File**: `/configs/ledfx-hooks.yaml`
 - **Hook Scripts**: `/scripts/ledfx-session-hook.sh`, `/scripts/ledfx-start.sh`, `/scripts/ledfx-stop.sh`
-- **Web Interface**: `http://airglow.office.lab:8080/config`
-- **Status Dashboard**: `http://airglow.office.lab:8080`
+- **Web Interface**: `http://airglow.office.lab/config`
+- **Status Dashboard**: `http://airglow.office.lab`
 
