@@ -181,7 +181,6 @@ function copy_configs() {
         return 0
     fi
 
-    local repo_url="https://raw.githubusercontent.com/RoyalPineapple/airglow/master"
     local repo_git_url="https://github.com/RoyalPineapple/airglow.git"
     
     # Try local files first, fallback to cloning from GitHub
