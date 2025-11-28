@@ -223,6 +223,10 @@ nav a:hover {
     background-color: var(--color-warning);
 }
 
+.status-dot.status-neutral {
+    background-color: #95a5a6;
+}
+
 .loading {
     color: var(--color-text-light);
     font-style: italic;
