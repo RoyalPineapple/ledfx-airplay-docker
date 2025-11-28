@@ -76,11 +76,15 @@
                 html += '<h2>Audio System</h2>';
                 html += '<div class="status-grid">';
                 const audio = data.audio || {};
-                html += `<div class="status-item"><span class="status-label">PulseAudio Available:</span> ${formatStatus(audio.pulseaudio?.available)}</div>`;
-                html += `<div class="status-item"><span class="status-label">Active Audio Streams:</span> ${audio.active_streams || 0}</div>`;
+                html += `<div class="status-item"><span class="status-label">PulseAudio:</span> ${formatStatus(audio.pulseaudio?.available)}</div>`;
+                html += `<div class="status-item"><span class="status-label">Active Streams:</span> <span class="status-value">${audio.active_streams || 0}</span></div>`;
                 if (data.ledfx_audio_device?.configured_device) {
-                    const deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
-                    html += `<div class="status-item"><span class="status-label">LedFX Audio Device:</span> ${escapeHtml(deviceName)}</div>`;
+                    let deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
+                    // Make "default" more descriptive
+                    if (deviceName === 'default' || deviceName.toLowerCase() === 'pulse') {
+                        deviceName = 'PulseAudio';
+                    }
+                    html += `<div class="status-item"><span class="status-label">Audio Input:</span> <span class="status-value">${escapeHtml(deviceName)}</span></div>`;
                 }
                 html += '</div>';
                 html += '</section>';
@@ -89,15 +93,17 @@
                 html += '<section class="status-section">';
                 html += '<h2>Playback Status</h2>';
                 html += '<div class="status-grid">';
-                html += `<div class="status-item"><span class="status-label">Shairport-Sync Playing:</span> ${formatStatus(audio.shairport_connected && !audio.shairport_corked)}</div>`;
-                html += `<div class="status-item"><span class="status-label">LedFX Streaming (API):</span> ${formatStatus(audio.ledfx_streaming_flag)}</div>`;
+                const shairportPlaying = audio.shairport_connected && !audio.shairport_corked;
+                html += `<div class="status-item"><span class="status-label">AirPlay Active:</span> ${formatStatus(shairportPlaying)}${shairportPlaying ? '' : ' <span class="status-hint">(no active connection)</span>'}</div>`;
+                html += `<div class="status-item"><span class="status-label">LedFX Processing:</span> ${formatStatus(audio.ledfx_streaming_flag)}${audio.ledfx_streaming_flag ? '' : ' <span class="status-hint">(idle - no audio input)</span>'}</div>`;
                 html += '</div>';
                 html += '</section>';
 
                 // Diagnostics
                 html += '<section class="status-section">';
                 html += '<h2>Diagnostics</h2>';
-                html += '<button id="run-diagnostic" class="btn btn-secondary">Run Diagnostic Check</button>';
+                html += '<p class="section-description">Run a comprehensive system check to diagnose issues</p>';
+                html += '<button id="run-diagnostic" class="btn btn-primary">Run Diagnostic Check</button>';
                 html += '<div id="diagnostic-output" class="diagnostic-output" style="display: none;"></div>';
                 html += '</section>';
 

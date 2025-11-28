@@ -183,6 +183,19 @@ nav a:hover {
     color: var(--color-text-light);
 }
 
+.status-value {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.status-hint {
+    color: var(--color-text-light);
+    font-size: 0.85rem;
+    font-weight: normal;
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+
 .status-dot {
     display: inline-block;
     width: 12px;
