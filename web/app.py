@@ -558,13 +558,12 @@ def config():
 @app.route('/api/status')
 def status():
     """Get comprehensive status information"""
-    # Get container statuses with versions for all containers
+    # Get container statuses with versions for all containers (excluding airglow-web as it's the UI itself)
     containers = {
         'avahi': check_container_status('avahi'),
         'nqptp': check_container_status('nqptp'),
         'ledfx': check_container_status('ledfx'),
-        'shairport_sync': check_container_status('shairport-sync'),
-        'airglow_web': check_container_status('airglow-web')
+        'shairport_sync': check_container_status('shairport-sync')
     }
     
     # Format container data
@@ -807,7 +806,8 @@ def rate_limit_diagnose(f):
 def restart_container(container_name):
     """Restart a specific container"""
     # Validate container name (security: only allow known containers)
-    allowed_containers = ['avahi', 'nqptp', 'ledfx', 'shairport-sync', 'airglow-web']
+    # Exclude airglow-web as it's the UI itself
+    allowed_containers = ['avahi', 'nqptp', 'ledfx', 'shairport-sync']
     if container_name not in allowed_containers:
         return jsonify({'error': 'Invalid container name'}), 400
     

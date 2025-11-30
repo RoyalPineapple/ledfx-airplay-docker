@@ -84,14 +84,14 @@
 
                 // Calculate overall system health
                 const containers = data.containers || {};
-                // Order containers by dependency: avahi -> nqptp -> ledfx -> shairport-sync -> airglow-web
-                const containerOrder = ['avahi', 'nqptp', 'ledfx', 'shairport_sync', 'airglow_web'];
+                // Order containers by dependency: avahi -> nqptp -> ledfx -> shairport-sync
+                // Exclude airglow-web as it's the UI itself
+                const containerOrder = ['avahi', 'nqptp', 'ledfx', 'shairport_sync'];
                 const containerNames = {
                     'avahi': 'Avahi',
                     'nqptp': 'NQPTP',
                     'ledfx': 'LedFX',
-                    'shairport_sync': 'Shairport-Sync',
-                    'airglow_web': 'Airglow Web'
+                    'shairport_sync': 'Shairport-Sync'
                 };
                 
                 let runningCount = 0;
