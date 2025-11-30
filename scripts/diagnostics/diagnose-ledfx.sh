@@ -4,15 +4,6 @@
 # Usage: Source diagnose-common.sh first, then run this script
 # Requirements: jq (for JSON parsing)
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Source common functions if not already sourced
-if [ -z "${DIAGNOSE_COMMON_SOURCED:-}" ]; then
-    source "${SCRIPT_DIR}/diagnose-common.sh"
-    export DIAGNOSE_COMMON_SOURCED=1
-fi
-
 section "5. LedFx (Visualization Engine)"
 
 # Check if container is running

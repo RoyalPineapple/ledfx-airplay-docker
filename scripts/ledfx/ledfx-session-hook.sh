@@ -91,14 +91,14 @@ case "$action" in
     
     if [ "$mode" = "scene" ]; then
       log_entry "INFO" "Calling ledfx-scene.sh for scene(s)"
-      HOOK_TYPE="start" /scripts/ledfx-scene.sh "" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+      HOOK_TYPE="start" /scripts/ledfx/ledfx-scene.sh "" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
         log_entry "ERROR" "Failed to activate scene(s)"
         exit 1
       }
       log_entry "INFO" "Scene(s) activated successfully"
     else
       log_entry "INFO" "Calling ledfx-start.sh for virtual(s) ${VIRTUAL_IDS}"
-      /scripts/ledfx-start.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+      /scripts/ledfx/ledfx-start.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
         log_entry "ERROR" "Failed to start LedFx"
         exit 1
       }
@@ -126,14 +126,14 @@ case "$action" in
     
     if [ "$mode" = "scene" ]; then
       log_entry "INFO" "Calling ledfx-scene.sh for scene(s)"
-      HOOK_TYPE="end" /scripts/ledfx-scene.sh "" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+      HOOK_TYPE="end" /scripts/ledfx/ledfx-scene.sh "" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
         log_entry "ERROR" "Failed to activate scene(s)"
         exit 1
       }
       log_entry "INFO" "Scene(s) activated successfully"
     else
       log_entry "INFO" "Calling ledfx-stop.sh for virtual(s) ${VIRTUAL_IDS}"
-      /scripts/ledfx-stop.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
+      /scripts/ledfx/ledfx-stop.sh "${VIRTUAL_IDS}" "${LEDFX_HOST}" "${LEDFX_PORT}" || {
         log_entry "ERROR" "Failed to stop LedFx"
         exit 1
       }

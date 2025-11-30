@@ -3,15 +3,6 @@
 # Checks audio bridge status
 # Usage: Source diagnose-common.sh first, then run this script
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Source common functions if not already sourced
-if [ -z "${DIAGNOSE_COMMON_SOURCED:-}" ]; then
-    source "${SCRIPT_DIR}/diagnose-common.sh"
-    export DIAGNOSE_COMMON_SOURCED=1
-fi
-
 section "4. PulseAudio (Audio Bridge)"
 
 # Check if LedFx container is running (hosts PulseAudio)

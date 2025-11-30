@@ -19,7 +19,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Source common functions
-source "${SCRIPT_DIR}/diagnose-common.sh"
+source "${SCRIPT_DIR}/diagnostics/diagnose-common.sh"
 
 # Initialize diagnostic environment
 diagnose_init "$@"
