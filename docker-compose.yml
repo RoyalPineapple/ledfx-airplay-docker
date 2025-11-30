@@ -103,8 +103,9 @@ services:
       - "8080:80"
 
     environment:
-      # LedFX API connection - use container name for service discovery
-      - LEDFX_HOST=ledfx
+      # LedFX API connection - use bridge gateway since ledfx is on host networking
+      # Bridge gateway (172.18.0.1) provides access to host networking services
+      - LEDFX_HOST=172.18.0.1
       - LEDFX_PORT=8888
 
     volumes:
