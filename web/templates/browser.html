@@ -40,24 +40,14 @@
             <button type="button" class="message-close" data-target="error-message" aria-label="Dismiss error">&times;</button>
         </div>
 
-        <!-- AirPlay 2 Services Section -->
+        <!-- AirPlay Devices Section -->
         <section class="status-section">
-            <h2>AirPlay 2 Services (_raop._tcp)</h2>
-            <p class="section-description">Discover AirPlay 2 compatible devices on your network</p>
-            <div id="airplay2-loading" class="loading" style="display: none;">Loading...</div>
-            <div id="airplay2-error" class="error" style="display: none;"></div>
-            <div id="airplay2-devices" style="display: none;"></div>
-            <div id="airplay2-empty" class="loading" style="display: none;">No AirPlay 2 devices found on the network.</div>
-        </section>
-
-        <!-- AirPlay 1 Services Section -->
-        <section class="status-section">
-            <h2>AirPlay 1 Services (_airplay._tcp)</h2>
-            <p class="section-description">Discover AirPlay 1 compatible devices on your network</p>
-            <div id="airplay1-loading" class="loading" style="display: none;">Loading...</div>
-            <div id="airplay1-error" class="error" style="display: none;"></div>
-            <div id="airplay1-devices" style="display: none;"></div>
-            <div id="airplay1-empty" class="loading" style="display: none;">No AirPlay 1 devices found on the network.</div>
+            <h2>AirPlay Devices</h2>
+            <p class="section-description">Discover AirPlay compatible devices on your network</p>
+            <div id="devices-loading" class="loading" style="display: none;">Loading...</div>
+            <div id="devices-error" class="error" style="display: none;"></div>
+            <div id="devices-table" style="display: none;"></div>
+            <div id="devices-empty" class="loading" style="display: none;">No AirPlay devices found on the network.</div>
         </section>
     </div>
 
@@ -101,6 +91,7 @@
                     <td class="device-address">${device.address_display ? escapeHtml(device.address_display) : (device.address ? escapeHtml(device.address) : '—')}</td>
                     <td class="device-hostname">${device.hostname ? escapeHtml(device.hostname) : '—'}</td>
                     <td class="device-port">${device.port ? escapeHtml(device.port) : '—'}</td>
+                    <td class="device-versions">${device.airplay_versions ? escapeHtml(device.airplay_versions) : '—'}</td>
                     <td class="device-firmware">${device.firmware_version ? escapeHtml(device.firmware_version) : '—'}</td>
                     <td class="device-features">${device.feature_flags ? `<code>${escapeHtml(device.feature_flags)}</code>` : '—'}</td>
                 </tr>
@@ -124,6 +115,7 @@
                                 <th>IP Address</th>
                                 <th>Hostname</th>
                                 <th>Port</th>
+                                <th>AirPlay Versions</th>
                                 <th>Firmware</th>
                                 <th>Features</th>
                             </tr>
@@ -146,14 +138,10 @@
 
         async function refreshBrowser() {
             // Show loading states
-            document.getElementById('airplay2-loading').style.display = 'block';
-            document.getElementById('airplay2-error').style.display = 'none';
-            document.getElementById('airplay2-devices').style.display = 'none';
-            document.getElementById('airplay2-empty').style.display = 'none';
-            document.getElementById('airplay1-loading').style.display = 'block';
-            document.getElementById('airplay1-error').style.display = 'none';
-            document.getElementById('airplay1-devices').style.display = 'none';
-            document.getElementById('airplay1-empty').style.display = 'none';
+            document.getElementById('devices-loading').style.display = 'block';
+            document.getElementById('devices-error').style.display = 'none';
+            document.getElementById('devices-table').style.display = 'none';
+            document.getElementById('devices-empty').style.display = 'none';
 
             // Disable refresh button during load
             const refreshBtn = document.getElementById('refresh-btn');
@@ -170,30 +158,16 @@
                 }
                 const data = await response.json();
 
-                // Update AirPlay 2 section
-                const airplay2Loading = document.getElementById('airplay2-loading');
-                const airplay2Error = document.getElementById('airplay2-error');
+                const devicesLoading = document.getElementById('devices-loading');
+                const devicesError = document.getElementById('devices-error');
 
-                airplay2Loading.style.display = 'none';
+                devicesLoading.style.display = 'none';
 
-                if (data.airplay2.error) {
-                    airplay2Error.textContent = `Error: ${escapeHtml(data.airplay2.error)}`;
-                    airplay2Error.style.display = 'block';
+                if (data.error) {
+                    devicesError.textContent = `Error: ${escapeHtml(data.error)}`;
+                    devicesError.style.display = 'block';
                 } else {
-                    renderDevices('airplay2-devices', data.airplay2.devices, 'airplay2-empty');
-                }
-
-                // Update AirPlay 1 section
-                const airplay1Loading = document.getElementById('airplay1-loading');
-                const airplay1Error = document.getElementById('airplay1-error');
-
-                airplay1Loading.style.display = 'none';
-
-                if (data.airplay1.error) {
-                    airplay1Error.textContent = `Error: ${escapeHtml(data.airplay1.error)}`;
-                    airplay1Error.style.display = 'block';
-                } else {
-                    renderDevices('airplay1-devices', data.airplay1.devices, 'airplay1-empty');
+                    renderDevices('devices-table', data.devices, 'devices-empty');
                 }
 
                 // Update timestamp
@@ -206,8 +180,7 @@
             } catch (error) {
                 console.error('Error fetching browser data:', error);
                 showError(`Error loading browser data: ${escapeHtml(error.message)}`);
-                document.getElementById('airplay2-loading').style.display = 'none';
-                document.getElementById('airplay1-loading').style.display = 'none';
+                document.getElementById('devices-loading').style.display = 'none';
             } finally {
                 refreshBtn.disabled = false;
                 if (refreshIcon) {

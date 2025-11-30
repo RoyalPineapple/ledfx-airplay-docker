@@ -1087,18 +1087,19 @@ def parse_avahi_browse_output(output):
 def get_airplay_devices():
     """Get AirPlay devices using avahi-browse"""
     result = {
-        'airplay2': {'devices': [], 'error': None},
-        'airplay1': {'devices': [], 'error': None},
+        'devices': [],
+        'error': None,
         'timestamp': datetime.now().isoformat()
     }
     
     # Check if avahi container is running
     avahi_status = check_container_status('avahi')
     if not avahi_status['running']:
-        error_msg = 'Avahi container is not running'
-        result['airplay2']['error'] = error_msg
-        result['airplay1']['error'] = error_msg
+        result['error'] = 'Avahi container is not running'
         return jsonify(result)
+    
+    # Combined device map keyed by hostname
+    all_devices = {}
     
     # Browse AirPlay 2 services (_raop._tcp)
     # Use -p for parsable output and -r for resolve
@@ -1110,14 +1111,20 @@ def get_airplay_devices():
             timeout=10
         )
         if airplay2_result.returncode == 0:
-            result['airplay2']['devices'] = parse_avahi_browse_output(airplay2_result.stdout)
+            airplay2_devices = parse_avahi_browse_output(airplay2_result.stdout)
+            # Mark devices as supporting AirPlay 2
+            for device in airplay2_devices:
+                hostname_key = device.get('hostname', '').lower() if device.get('hostname') else device.get('name', '').lower()
+                if hostname_key:
+                    if hostname_key not in all_devices:
+                        all_devices[hostname_key] = device
+                    all_devices[hostname_key]['airplay2'] = True
         else:
-            result['airplay2']['error'] = airplay2_result.stderr or 'Command failed'
+            logger.warning(f"AirPlay 2 browse failed: {airplay2_result.stderr}")
     except subprocess.TimeoutExpired:
-        result['airplay2']['error'] = 'Command timed out after 10 seconds'
+        logger.warning("AirPlay 2 browse timed out")
     except Exception as e:
         logger.error(f"Error browsing AirPlay 2 services: {e}")
-        result['airplay2']['error'] = str(e) if app.debug else 'Error executing avahi-browse'
     
     # Browse AirPlay 1 services (_airplay._tcp)
     # Use -p for parsable output and -r for resolve
@@ -1129,14 +1136,30 @@ def get_airplay_devices():
             timeout=10
         )
         if airplay1_result.returncode == 0:
-            result['airplay1']['devices'] = parse_avahi_browse_output(airplay1_result.stdout)
+            airplay1_devices = parse_avahi_browse_output(airplay1_result.stdout)
+            # Mark devices as supporting AirPlay 1
+            for device in airplay1_devices:
+                hostname_key = device.get('hostname', '').lower() if device.get('hostname') else device.get('name', '').lower()
+                if hostname_key:
+                    if hostname_key not in all_devices:
+                        all_devices[hostname_key] = device
+                    all_devices[hostname_key]['airplay1'] = True
         else:
-            result['airplay1']['error'] = airplay1_result.stderr or 'Command failed'
+            logger.warning(f"AirPlay 1 browse failed: {airplay1_result.stderr}")
     except subprocess.TimeoutExpired:
-        result['airplay1']['error'] = 'Command timed out after 10 seconds'
+        logger.warning("AirPlay 1 browse timed out")
     except Exception as e:
         logger.error(f"Error browsing AirPlay 1 services: {e}")
-        result['airplay1']['error'] = str(e) if app.debug else 'Error executing avahi-browse'
+    
+    # Convert to list and format AirPlay version info
+    for device in all_devices.values():
+        versions = []
+        if device.get('airplay2'):
+            versions.append('AirPlay 2')
+        if device.get('airplay1'):
+            versions.append('AirPlay 1')
+        device['airplay_versions'] = ', '.join(versions) if versions else 'Unknown'
+        result['devices'].append(device)
     
     return jsonify(result)
 

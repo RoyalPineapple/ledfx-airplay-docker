@@ -1178,3 +1178,9 @@ code {
     font-size: 0.85rem;
     color: var(--color-text);
 }
+
+.device-versions {
+    color: var(--color-text);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
