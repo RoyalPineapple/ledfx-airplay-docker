@@ -136,7 +136,7 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '  cp /etc/shairport-sync.conf /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '  sed -i "/^[[:space:]]*interfaces[[:space:]]*=/d" /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '  # Add interfaces setting after mdns_backend' >> /usr/local/bin/start.sh && \
-    echo '  awk -v ip="$HOST_IP" '"'"'/mdns_backend = "avahi";/ { print; print "\tinterfaces = \"" ip "\";"; next }1'"'"' /tmp/shairport-sync.conf > /tmp/shairport-sync.conf.new && mv /tmp/shairport-sync.conf.new /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
+    echo '  awk -v ip='"'"'"$HOST_IP"'"'"' '"'"'/mdns_backend = "avahi";/ { print; print "\tinterfaces = \"" ip "\";"; next }1'"'"' /tmp/shairport-sync.conf > /tmp/shairport-sync.conf.new && mv /tmp/shairport-sync.conf.new /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '  # Replace original with modified version' >> /usr/local/bin/start.sh && \
     echo '  cat /tmp/shairport-sync.conf > /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo 'else' >> /usr/local/bin/start.sh && \
