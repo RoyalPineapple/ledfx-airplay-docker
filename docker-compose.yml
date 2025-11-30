@@ -36,6 +36,8 @@ services:
       - ./configs/avahi-daemon.conf:/etc/avahi/avahi-daemon.conf:ro
       # D-Bus socket for shairport-sync to connect
       - /var/run/dbus:/var/run/dbus:rw
+      # Shared directory for Avahi to write host IP (Avahi runs on host networking, so it can detect it)
+      - ./runtime:/var/run/avahi-daemon:rw
     
     restart: unless-stopped
 
@@ -167,6 +169,8 @@ services:
       - /var/run/dbus:/var/run/dbus:ro
       # Shared memory for NQPTP to communicate with shairport-sync
       - /dev/shm:/dev/shm
+      # Shared directory to read host IP from Avahi (Avahi writes it on startup)
+      - ./runtime:/var/run/avahi-daemon:ro
 
     # Ensure Avahi, NQPTP, and LedFX start first
     depends_on:
