@@ -167,6 +167,9 @@ nav a:hover {
     margin-bottom: calc(var(--spacing) * 1.25);
     color: var(--color-text);
     font-weight: 700;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .status-grid {
@@ -186,6 +189,7 @@ nav a:hover {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    min-width: 0; /* Allow flex items to shrink below content size */
 }
 
 .status-item-content {
@@ -193,12 +197,18 @@ nav a:hover {
     align-items: center;
     gap: 0.5rem;
     flex: 1;
+    min-width: 0; /* Allow flex items to shrink below content size */
+    overflow: visible;
 }
 
 .btn-sm {
     padding: 0.25rem 0.75rem;
     font-size: 0.875rem;
     min-width: auto;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    flex-shrink: 0;
 }
 
 .btn-success {
