@@ -50,14 +50,14 @@ fi
 
 if [ "$JSON_OUTPUT" = "true" ]; then
     # JSON output mode - collect all results
-    # Redirect all output to capture JSON lines
+    # Redirect all output to capture JSON lines, suppress everything else
     {
-        source "${SCRIPT_DIR}/diagnostics/diagnose-shairport.sh" >&2
-        source "${SCRIPT_DIR}/diagnostics/diagnose-avahi.sh" >&2
-        source "${SCRIPT_DIR}/diagnostics/diagnose-nqptp.sh" >&2
-        source "${SCRIPT_DIR}/diagnostics/diagnose-pulseaudio.sh" >&2
-        source "${SCRIPT_DIR}/diagnostics/diagnose-ledfx.sh" >&2
-    } 2>&1 | grep -E '^\{"status"' > /tmp/diagnostic-json.$$ || true
+        source "${SCRIPT_DIR}/diagnostics/diagnose-shairport.sh" 2>&1
+        source "${SCRIPT_DIR}/diagnostics/diagnose-avahi.sh" 2>&1
+        source "${SCRIPT_DIR}/diagnostics/diagnose-nqptp.sh" 2>&1
+        source "${SCRIPT_DIR}/diagnostics/diagnose-pulseaudio.sh" 2>&1
+        source "${SCRIPT_DIR}/diagnostics/diagnose-ledfx.sh" 2>&1
+    } | grep -E '^\{"status"' > /tmp/diagnostic-json.$$ 2>/dev/null || true
     
     # Count warnings and errors from captured JSON
     WARNINGS=0
