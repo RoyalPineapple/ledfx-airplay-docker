@@ -601,12 +601,15 @@ def get_config():
         devices_data = get_ledfx_devices()
         has_devices = devices_data.get('connected') and len(devices_data.get('devices', {})) > 0
         
+        # Also check if virtuals are available (virtuals can exist without devices being "online")
+        has_virtuals = len(available_virtuals) > 0
+        
         return jsonify({
             'hooks': hook_config,
             'virtuals': virtual_config,
             'available_virtuals': available_virtuals,
             'available_scenes': available_scenes,
-            'has_devices': has_devices,
+            'has_devices': has_devices or has_virtuals,  # Show UI if devices OR virtuals exist
             'airplay_name': get_airplay_name()
         })
     except Exception as e:
