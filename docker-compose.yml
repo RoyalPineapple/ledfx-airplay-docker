@@ -154,6 +154,20 @@ services:
       # D-Bus connection to Avahi container
       - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
+    volumes:
+      # Shairport configuration (AirPlay device name, audio settings) - READ ONLY
+      - ./configs/shairport-sync.conf:/etc/shairport-sync.conf:ro
+      # LedFX hook configuration (YAML format, created dynamically by web app, read by hook scripts)
+      - ./configs:/configs:ro
+      # PulseAudio socket for audio output to LedFX
+      - ./pulse:/pulse
+      # Session hook scripts triggered on AirPlay start/stop
+      - ./scripts:/scripts:ro
+      # D-Bus socket to connect to Avahi container
+      - /var/run/dbus:/var/run/dbus:ro
+      # Shared memory for NQPTP to communicate with shairport-sync
+      - /dev/shm:/dev/shm
+
     # Ensure Avahi, NQPTP, and LedFX start first
     depends_on:
       - avahi
