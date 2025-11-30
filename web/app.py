@@ -570,11 +570,13 @@ def get_diagnostic_warnings():
     
     try:
         # Run diagnostic script with --json flag for structured output
+        # Use very short timeout for fast page load (2 seconds max)
+        # If it takes longer, return empty results - diagnostics can be loaded separately
         result = subprocess.run(
             ['/scripts/diagnose-airglow.sh', '--json'],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=2,  # Very short timeout - diagnostics should load quickly or be skipped
             cwd='/scripts'
         )
         
@@ -625,8 +627,16 @@ def status():
             'version': status.get('version')
         }
     
-    # Get diagnostic warnings
-    diagnostics = get_diagnostic_warnings()
+    # Get diagnostic warnings (non-blocking - return immediately if it takes too long)
+    # Diagnostics are loaded asynchronously by the frontend to avoid blocking page load
+    diagnostics = None
+    try:
+        # Try to get diagnostics quickly, but don't block if it takes too long
+        diagnostics = get_diagnostic_warnings()
+    except Exception as e:
+        logger.warning(f"Could not get diagnostics quickly: {e}")
+        # Return empty diagnostics - frontend can load them separately
+        diagnostics = {'warnings': 0, 'errors': 0, 'warning_messages': []}
     
     status_data = {
         'containers': container_data,
