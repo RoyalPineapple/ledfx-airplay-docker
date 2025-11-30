@@ -318,6 +318,10 @@ function copy_configs() {
                 msg_error "Failed to copy scripts directory"
                 exit 1
             }
+            # Ensure diagnostic scripts are executable
+            chmod +x "${INSTALL_DIR}/scripts/diagnose-airglow.sh" 2>/dev/null || true
+            find "${INSTALL_DIR}/scripts/diagnostics" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+            find "${INSTALL_DIR}/scripts/ledfx" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
         fi
         
         # Copy .dockerignore if it exists
@@ -448,6 +452,10 @@ function copy_configs() {
                 msg_error "Failed to copy scripts directory"
                 exit 1
             }
+            # Ensure diagnostic scripts are executable
+            chmod +x "${INSTALL_DIR}/scripts/diagnose-airglow.sh" 2>/dev/null || true
+            find "${INSTALL_DIR}/scripts/diagnostics" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+            find "${INSTALL_DIR}/scripts/ledfx" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
         fi
         
         # Copy .dockerignore if it exists
