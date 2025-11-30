@@ -23,7 +23,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
         # Check device name
         # Format: "shairport.c:2133"    name = "Airglow";
         # Extract the value between quotes after "name ="
-        DEVICE_NAME=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep 'name =' | sed -n 's/.*name = "\([^"]*\)".*/\1/p' | head -1 || echo "")
+        DEVICE_NAME=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep 'name =' | sed -n 's/.*name[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 || echo "")
         if [ -z "$DEVICE_NAME" ]; then
             # Try alternative format: player name = "..."
             DEVICE_NAME=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep -i 'player name' | sed -n 's/.*"\([^"]*\)".*/\1/p' | head -1 || echo "")
@@ -95,12 +95,84 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
         check_warn "Not connected to PulseAudio (socket not found)"
     fi
     
+    # Check port listening status
+    echo
+    echo "  Network Ports:"
+    if docker_cmd exec shairport-sync netstat -tulnp 2>&1 | grep -q ':7000.*LISTEN'; then
+        check_ok "Port 7000 (AirPlay control) is listening"
+    else
+        check_fail "Port 7000 (AirPlay control) is not listening"
+    fi
+    
+    if docker_cmd exec shairport-sync netstat -tulnp 2>&1 | grep -q ':5000.*LISTEN'; then
+        check_ok "Port 5000 (AirPlay audio TCP) is listening"
+    else
+        check_warn "Port 5000 (AirPlay audio TCP) is not listening"
+    fi
+    
+    if docker_cmd exec shairport-sync netstat -ulnp 2>&1 | grep -q ':5000.*udp'; then
+        check_ok "Port 5000 (AirPlay audio UDP) is listening"
+    else
+        check_warn "Port 5000 (AirPlay audio UDP) is not listening"
+    fi
+    
+    # Check mDNS advertisement (what IP is being advertised)
+    echo
+    echo "  mDNS Advertisement:"
+    if [ -n "$DEVICE_NAME" ] && docker_cmd exec avahi avahi-browse -r _raop._tcp 2>&1 | grep -q "$DEVICE_NAME"; then
+        # Extract the IP address being advertised
+        ADVERTISED_IP=$(docker_cmd exec avahi avahi-browse -r _raop._tcp 2>&1 | grep "$DEVICE_NAME" | grep -oE 'address = \[([0-9.]+)\]' | head -1 | sed 's/address = \[\(.*\)\]/\1/' || echo "")
+        if [ -n "$ADVERTISED_IP" ]; then
+            # Check if it's a Docker bridge IP (172.x.x.x or 10.x.x.x)
+            if echo "$ADVERTISED_IP" | grep -qE '^172\.(1[6-9]|2[0-9]|3[0-1])\.|^10\.'; then
+                check_warn "Service advertised with Docker bridge IP ($ADVERTISED_IP) - clients may not be able to connect"
+            else
+                check_ok "Service advertised with IP: $ADVERTISED_IP"
+            fi
+        else
+            check_warn "Could not determine advertised IP address"
+        fi
+    else
+        check_warn "Service '$DEVICE_NAME' not found in mDNS browse"
+    fi
+    
+    # Check connection logs for errors
+    echo
+    echo "  Connection Status:"
+    RECENT_ERRORS=$(docker_cmd logs shairport-sync --since 5m 2>&1 | grep -iE 'error|fail|fatal|cannot|unable' | grep -v 'mutex_lock' | wc -l | tr -d ' \n' || echo "0")
+    if [ "${RECENT_ERRORS:-0}" -gt 0 ]; then
+        check_warn "Found $RECENT_ERRORS recent error(s) in logs"
+        docker_cmd logs shairport-sync --since 5m 2>&1 | grep -iE 'error|fail|fatal|cannot|unable' | grep -v 'mutex_lock' | tail -3 | while read line; do
+            echo "    $line"
+        done
+    else
+        check_ok "No recent errors in connection logs"
+    fi
+    
+    # Check for connection attempts
+    RECENT_CONNECTIONS=$(docker_cmd logs shairport-sync --since 5m 2>&1 | grep -iE 'connection.*closed|teardown|rtsp' | grep -v 'mutex_lock' | wc -l | tr -d ' \n' || echo "0")
+    if [ "${RECENT_CONNECTIONS:-0}" -gt 0 ]; then
+        check_ok "Recent connection activity detected ($RECENT_CONNECTIONS events)"
+        # Check if connections are being closed immediately (connection issue)
+        IMMEDIATE_CLOSES=$(docker_cmd logs shairport-sync --since 5m 2>&1 | grep -i 'connection.*closed by client' | wc -l | tr -d ' \n' || echo "0")
+        if [ "${IMMEDIATE_CLOSES:-0}" -gt 2 ]; then
+            check_warn "Multiple connections closed immediately - may indicate network/IP address issue"
+        fi
+    else
+        check_warn "No recent connection activity"
+    fi
+    
     # Check recent connections
     echo
     echo "  Recent AirPlay activity:"
-    docker_cmd logs shairport-sync --since 5m 2>&1 | grep -E '(Connection|Playback|Active)' | tail -5 | while read line; do
-        echo "    $line"
-    done || echo "    No recent activity"
+    ACTIVITY=$(docker_cmd logs shairport-sync --since 5m 2>&1 | grep -iE '(connection|playback|active|rtsp)' | grep -v 'mutex_lock' | tail -5)
+    if [ -n "$ACTIVITY" ]; then
+        echo "$ACTIVITY" | while read line; do
+            echo "    $line"
+        done
+    else
+        echo "    No recent activity"
+    fi
     
 else
     check_fail "Container is not running"

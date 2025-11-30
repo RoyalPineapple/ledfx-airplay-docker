@@ -27,7 +27,8 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^avahi$'; then
     echo
     echo "  mDNS Services:"
     # Use timeout to prevent hanging - avahi-browse can be slow
-    AIRPLAY_SERVICES=$(timeout 5 docker_cmd exec avahi avahi-browse -a -r 2>&1 | grep -i 'airplay\|raop\|airtunes' | wc -l 2>/dev/null | tr -d ' \n' || echo "0")
+    # Case-insensitive search for AirPlay services
+    AIRPLAY_SERVICES=$(timeout 5 docker_cmd exec avahi avahi-browse -a -r 2>&1 | grep -iE 'airplay|raop|airtunes' | wc -l 2>/dev/null | tr -d ' \n' || echo "0")
     # Ensure we have a valid integer (default to 0 if empty or invalid)
     AIRPLAY_SERVICES=${AIRPLAY_SERVICES:-0}
     if [ "${AIRPLAY_SERVICES}" -gt 0 ] 2>/dev/null; then
