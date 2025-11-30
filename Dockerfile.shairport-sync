@@ -132,14 +132,11 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '  echo "Configuring shairport-sync to advertise host IP: $HOST_IP"' >> /usr/local/bin/start.sh && \
     echo '  # Update config file to use host IP (if interfaces setting exists, update it; otherwise add it)' >> /usr/local/bin/start.sh && \
     echo '  # Copy config to writable location and modify it there' >> /usr/local/bin/start.sh && \
+    echo '  # Remove any existing interfaces lines first to avoid duplicates' >> /usr/local/bin/start.sh && \
     echo '  cp /etc/shairport-sync.conf /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
-    echo '  if grep -q "^[[:space:]]*interfaces[[:space:]]*=" /tmp/shairport-sync.conf 2>/dev/null; then' >> /usr/local/bin/start.sh && \
-    echo '    # Update existing interfaces setting' >> /usr/local/bin/start.sh && \
-    echo '    sed -i "s|^[[:space:]]*interfaces[[:space:]]*=.*|interfaces = \"$HOST_IP\";|" /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
-    echo '  else' >> /usr/local/bin/start.sh && \
-    echo '    # Add interfaces setting after mdns_backend' >> /usr/local/bin/start.sh && \
-    echo '    awk -v ip="$HOST_IP" '"'"'/mdns_backend = "avahi";/ { print; print "\tinterfaces = \"" ip "\";"; next }1'"'"' /tmp/shairport-sync.conf > /tmp/shairport-sync.conf.new && mv /tmp/shairport-sync.conf.new /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
-    echo '  fi' >> /usr/local/bin/start.sh && \
+    echo '  sed -i "/^[[:space:]]*interfaces[[:space:]]*=/d" /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
+    echo '  # Add interfaces setting after mdns_backend' >> /usr/local/bin/start.sh && \
+    echo '  awk -v ip="$HOST_IP" '"'"'/mdns_backend = "avahi";/ { print; print "\tinterfaces = \"" ip "\";"; next }1'"'"' /tmp/shairport-sync.conf > /tmp/shairport-sync.conf.new && mv /tmp/shairport-sync.conf.new /tmp/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '  # Replace original with modified version' >> /usr/local/bin/start.sh && \
     echo '  cat /tmp/shairport-sync.conf > /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo 'else' >> /usr/local/bin/start.sh && \
