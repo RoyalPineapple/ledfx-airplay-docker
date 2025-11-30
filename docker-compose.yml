@@ -154,8 +154,9 @@ services:
       - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
     volumes:
-      # Shairport configuration (AirPlay device name, audio settings) - READ ONLY
-      - ./configs/shairport-sync.conf:/etc/shairport-sync.conf:ro
+      # Shairport configuration (AirPlay device name, audio settings)
+      # Mounted as read-write so startup script can dynamically set host IP
+      - ./configs/shairport-sync.conf:/etc/shairport-sync.conf:rw
       # LedFX hook configuration (YAML format, created dynamically by web app, read by hook scripts)
       - ./configs:/configs:ro
       # PulseAudio socket for audio output to LedFX
