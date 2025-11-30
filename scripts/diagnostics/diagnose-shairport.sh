@@ -42,6 +42,12 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
             if [ -n "$HOOK_PATH" ] && [ "$HOOK_PATH" != "shairport.c" ] && [ "${HOOK_PATH#/}" != "$HOOK_PATH" ]; then
                 if docker_cmd exec shairport-sync test -f "$HOOK_PATH"; then
                     check_ok "Session hook configured: $HOOK_PATH"
+                    # Verify hook path is correct (should be /scripts/ledfx-session-hook.sh)
+                    if [ "$HOOK_PATH" = "/scripts/ledfx-session-hook.sh" ]; then
+                        check_ok "Hook path is correct"
+                    elif [ "$HOOK_PATH" = "/scripts/ledfx/ledfx-session-hook.sh" ]; then
+                        check_warn "Hook path uses old location (should be /scripts/ledfx-session-hook.sh)"
+                    fi
                 else
                     check_warn "Session hook file not found: $HOOK_PATH"
                 fi
