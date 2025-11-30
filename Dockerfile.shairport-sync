@@ -70,6 +70,7 @@ RUN (git clone --depth 1 --branch ${SHAIRPORT_SYNC_VERSION} https://github.com/m
     rm -rf shairport-sync
 
 # Clean up build dependencies to reduce image size
+# Keep perl for config file modification (works with mounted files)
 RUN apk del \
     build-base \
     autoconf \
@@ -84,7 +85,8 @@ RUN apk del \
     openssl-dev \
     libconfig-dev \
     soxr-dev \
-    dbus-dev
+    dbus-dev && \
+    apk add --no-cache perl
 
 # Create directory for configuration and logs
 RUN mkdir -p /etc /var/log/shairport-sync /var/run/dbus
