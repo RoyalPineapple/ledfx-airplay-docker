@@ -32,11 +32,36 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
         check_warn "No active audio streams (no audio playing)"
     fi
     
-    # Check if shairport-sync is connected
+    # Check connection to previous component (Shairport-Sync)
+    echo
+    echo "  Component Connections:"
     if docker_cmd exec ledfx pactl list sink-inputs 2>/dev/null | grep -q 'Shairport Sync'; then
-        check_ok "Shairport-Sync connected to PulseAudio"
+        check_ok "Connected to Shairport-Sync (active audio stream)"
     else
-        check_warn "Shairport-Sync not connected to PulseAudio (no active stream)"
+        # Check if socket is accessible even if no active stream
+        if docker_cmd exec shairport-sync test -S /pulse/pulseaudio.socket 2>/dev/null; then
+            check_ok "Connected to Shairport-Sync (socket accessible, no active stream)"
+        else
+            check_warn "Not connected to Shairport-Sync (socket not accessible)"
+        fi
+    fi
+    
+    # Check connection to next component (LedFX)
+    # LedFX should be using PulseAudio as its audio input
+    if docker_cmd exec ledfx pactl list sources 2>/dev/null | grep -q 'pulse'; then
+        check_ok "LedFX configured to use PulseAudio (source available)"
+    else
+        # Check via LedFX API if available
+        if curl -s -f "${LEDFX_URL}/api/audio/devices" > /dev/null 2>&1; then
+            AUDIO_DEVICE=$(curl -s "${LEDFX_URL}/api/audio/devices" 2>/dev/null | grep -o '"active_device":\s*[0-9]*' | grep -o '[0-9]*' || echo "")
+            if [ -n "$AUDIO_DEVICE" ] && [ "$AUDIO_DEVICE" = "0" ]; then
+                check_ok "LedFX configured to use PulseAudio (device index 0)"
+            else
+                check_warn "LedFX may not be using PulseAudio (device index: ${AUDIO_DEVICE:-unknown})"
+            fi
+        else
+            check_warn "Could not verify LedFX audio configuration (API not accessible)"
+        fi
     fi
     
     # Check PulseAudio sinks

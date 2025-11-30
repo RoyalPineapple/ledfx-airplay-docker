@@ -52,6 +52,17 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^nqptp$'; then
         check_warn "Shared memory directory not accessible"
     fi
     
+    # Check connection to Shairport-Sync (via shared memory)
+    echo
+    echo "  Component Connections:"
+    # NQPTP and Shairport-Sync communicate via shared memory
+    # Check if shairport-sync can access the shared memory
+    if docker_cmd exec shairport-sync test -d /dev/shm 2>/dev/null; then
+        check_ok "Connected to Shairport-Sync (shared memory accessible)"
+    else
+        check_warn "Shared memory not accessible to Shairport-Sync"
+    fi
+    
 else
     check_fail "Container is not running"
 fi

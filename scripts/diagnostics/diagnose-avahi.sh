@@ -50,6 +50,20 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^avahi$'; then
         check_warn "Reflector mode not enabled (may affect bridge networking)"
     fi
     
+    # Check connection to next component (Shairport-Sync via D-Bus)
+    echo
+    echo "  Component Connections:"
+    if docker_cmd exec shairport-sync test -S /var/run/dbus/system_bus_socket 2>/dev/null; then
+        # Check if shairport-sync can actually connect to D-Bus
+        if docker_cmd exec shairport-sync dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 | grep -q 'org.freedesktop.Avahi' 2>/dev/null; then
+            check_ok "Connected to Shairport-Sync (D-Bus connection active)"
+        else
+            check_warn "D-Bus socket accessible but Avahi service not found (Shairport-Sync may not be connected)"
+        fi
+    else
+        check_warn "D-Bus socket not accessible to Shairport-Sync"
+    fi
+    
 else
     check_fail "Container is not running"
 fi

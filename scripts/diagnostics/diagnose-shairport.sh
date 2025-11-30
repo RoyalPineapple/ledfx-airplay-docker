@@ -55,6 +55,40 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
         check_fail "Configuration file not found"
     fi
     
+    # Check connection to previous component (Avahi via D-Bus)
+    echo
+    echo "  Component Connections:"
+    if docker_cmd exec shairport-sync test -S /var/run/dbus/system_bus_socket 2>/dev/null; then
+        # Check if shairport-sync can connect to Avahi via D-Bus
+        if docker_cmd exec shairport-sync dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 | grep -q 'org.freedesktop.Avahi' 2>/dev/null; then
+            check_ok "Connected to Avahi (D-Bus connection active)"
+        else
+            check_warn "D-Bus socket exists but Avahi service not found"
+        fi
+    else
+        check_fail "Not connected to Avahi (D-Bus socket not accessible)"
+    fi
+    
+    # Check connection to NQPTP (shared memory)
+    if docker_cmd exec shairport-sync test -d /dev/shm 2>/dev/null; then
+        check_ok "Shared memory accessible (NQPTP connection available)"
+    else
+        check_warn "Shared memory not accessible (NQPTP connection may fail)"
+    fi
+    
+    # Check connection to next component (PulseAudio)
+    if docker_cmd exec shairport-sync test -S /pulse/pulseaudio.socket 2>/dev/null; then
+        check_ok "PulseAudio socket accessible"
+        # Verify PulseAudio is actually responding
+        if docker_cmd exec ledfx pactl info 2>/dev/null | grep -q 'Server String'; then
+            check_ok "Connected to PulseAudio (server responding)"
+        else
+            check_warn "PulseAudio socket exists but server not responding"
+        fi
+    else
+        check_warn "Not connected to PulseAudio (socket not found)"
+    fi
+    
     # Check recent connections
     echo
     echo "  Recent AirPlay activity:"

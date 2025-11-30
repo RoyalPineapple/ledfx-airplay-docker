@@ -20,6 +20,28 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
         exit 1
     fi
     
+    # Check connection to previous component (PulseAudio)
+    echo
+    echo "  Component Connections:"
+    # Check if LedFX is configured to use PulseAudio
+    if curl -s -f "${LEDFX_URL}/api/audio/devices" > /dev/null 2>&1; then
+        AUDIO_DEVICE=$(curl -s "${LEDFX_URL}/api/audio/devices" 2>/dev/null | grep -o '"active_device":\s*[0-9]*' | grep -o '[0-9]*' || echo "")
+        if [ -n "$AUDIO_DEVICE" ] && [ "$AUDIO_DEVICE" = "0" ]; then
+            check_ok "Connected to PulseAudio (using device index 0)"
+        else
+            check_warn "May not be using PulseAudio (device index: ${AUDIO_DEVICE:-unknown})"
+        fi
+        
+        # Verify PulseAudio is actually available
+        if docker_cmd exec ledfx pactl info 2>/dev/null | grep -q 'Server String'; then
+            check_ok "PulseAudio server accessible"
+        else
+            check_warn "PulseAudio server not accessible"
+        fi
+    else
+        check_warn "Could not verify PulseAudio connection (audio devices API not accessible)"
+    fi
+    
     # Check global paused state
     PAUSED=$(curl -s "${LEDFX_URL}/api/virtuals" | jq -r '.paused' 2>/dev/null || echo "unknown")
     if [ "$PAUSED" = "false" ]; then
@@ -102,6 +124,15 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
                 fi
             fi
         done
+        
+        # Check connection to next component (LED Devices)
+        ONLINE_COUNT=$(echo "$DEVICE_DATA" | jq -r '.devices | to_entries[] | select(.value.online == true) | .key' 2>/dev/null | wc -l | tr -d ' ')
+        ONLINE_COUNT=${ONLINE_COUNT:-0}
+        if [ "${ONLINE_COUNT}" -gt 0 ] 2>/dev/null; then
+            check_ok "Connected to ${ONLINE_COUNT} LED device(s)"
+        else
+            check_warn "No LED devices connected (output will not be visible)"
+        fi
     else
         check_warn "Could not retrieve devices"
     fi
