@@ -102,10 +102,18 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '  sleep 1' >> /usr/local/bin/start.sh && \
     echo 'done' >> /usr/local/bin/start.sh && \
     echo 'echo "D-Bus socket found, starting shairport-sync..."' >> /usr/local/bin/start.sh && \
-    echo '# Get host IP from environment variable (set by install script) or detect it' >> /usr/local/bin/start.sh && \
-    echo 'if [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; then' >> /usr/local/bin/start.sh && \
-    echo '  # Fallback: try to detect host IP (may not work in bridge networking)' >> /usr/local/bin/start.sh && \
-    echo '  HOST_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '"'"'{print $7}'"'"' | head -1 || ip route | grep default | awk '"'"'{print $9}'"'"' | head -1 || hostname -I | awk '"'"'{print $1}'"'"')' >> /usr/local/bin/start.sh && \
+    echo '# Get host IP from environment variable (set by install script or docker-compose.yml)' >> /usr/local/bin/start.sh && \
+    echo '# If not set, try to detect it (fallback - may not work in bridge networking)' >> /usr/local/bin/start.sh && \
+    echo 'if [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ] || [ "$HOST_IP" = "" ]; then' >> /usr/local/bin/start.sh && \
+    echo '  echo "HOST_IP not set, attempting to detect..."' >> /usr/local/bin/start.sh && \
+    echo '  # Try multiple methods to detect host IP' >> /usr/local/bin/start.sh && \
+    echo '  HOST_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '"'"'{print $7}'"'"' | head -1)' >> /usr/local/bin/start.sh && \
+    echo '  if [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; then' >> /usr/local/bin/start.sh && \
+    echo '    HOST_IP=$(ip route | grep default | awk '"'"'{print $9}'"'"' | head -1)' >> /usr/local/bin/start.sh && \
+    echo '  fi' >> /usr/local/bin/start.sh && \
+    echo '  if [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; then' >> /usr/local/bin/start.sh && \
+    echo '    HOST_IP=$(hostname -I | awk '"'"'{print $1}'"'"')' >> /usr/local/bin/start.sh && \
+    echo '  fi' >> /usr/local/bin/start.sh && \
     echo 'fi' >> /usr/local/bin/start.sh && \
     echo 'if [ -n "$HOST_IP" ] && [ "$HOST_IP" != "127.0.0.1" ]; then' >> /usr/local/bin/start.sh && \
     echo '  echo "Configuring shairport-sync to advertise host IP: $HOST_IP"' >> /usr/local/bin/start.sh && \

@@ -57,16 +57,29 @@ curl -fsSL https://raw.githubusercontent.com/RoyalPineapple/airglow/master/insta
    git clone https://github.com/RoyalPineapple/airglow.git
    cd airglow
    ```
-2. Start the stack:
+2. Detect and set host IP for AirPlay advertisement:
+   ```bash
+   # Detect host IP and set it in docker-compose.yml
+   HOST_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $7}' | head -1)
+   if [ -n "$HOST_IP" ] && [ "$HOST_IP" != "127.0.0.1" ]; then
+     sed -i "s|HOST_IP=\${HOST_IP:-}|HOST_IP=${HOST_IP}|" docker-compose.yml
+     echo "Set HOST_IP to: $HOST_IP"
+   else
+     echo "Warning: Could not detect host IP. AirPlay may not work correctly."
+   fi
+   ```
+3. Start the stack:
    ```bash
    docker compose up -d
    ```
-3. Check status and logs:
+4. Check status and logs:
    ```bash
    docker compose ps
    docker compose logs
    ```
-4. Open the LedFX web UI: `http://localhost:8888`
+5. Open the LedFX web UI: `http://localhost:8888`
+
+**Note:** The install script (Method 1) automatically detects and sets the host IP. For manual installation, you need to set it yourself as shown above, or the startup script will attempt to detect it (may not work in bridge networking).
 
 ### Method 3: Download Script First
 
