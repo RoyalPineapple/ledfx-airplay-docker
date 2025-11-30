@@ -1106,3 +1106,75 @@ code {
 .summary-value.error {
     color: var(--color-error);
 }
+
+/* Device Browser Table Styles */
+.devices-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--spacing);
+    background: var(--color-bg-section);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.devices-table thead {
+    background: var(--color-bg);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.devices-table th {
+    padding: calc(var(--spacing) * 0.75) var(--spacing);
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.devices-table tbody tr {
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.2s;
+}
+
+.devices-table tbody tr:hover {
+    background-color: var(--color-bg);
+}
+
+.devices-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.devices-table td {
+    padding: calc(var(--spacing) * 0.75) var(--spacing);
+    color: var(--color-text);
+    vertical-align: middle;
+}
+
+.device-name {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.device-address,
+.device-hostname,
+.device-port {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--color-text-light);
+}
+
+.device-firmware {
+    color: var(--color-text-light);
+    font-size: 0.9rem;
+}
+
+.device-features code {
+    background-color: var(--color-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--color-text);
+}

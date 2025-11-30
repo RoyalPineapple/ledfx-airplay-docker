@@ -46,7 +46,7 @@
             <p class="section-description">Discover AirPlay 2 compatible devices on your network</p>
             <div id="airplay2-loading" class="loading" style="display: none;">Loading...</div>
             <div id="airplay2-error" class="error" style="display: none;"></div>
-            <div id="airplay2-devices" class="container-cards-grid" style="display: none;"></div>
+            <div id="airplay2-devices" style="display: none;"></div>
             <div id="airplay2-empty" class="loading" style="display: none;">No AirPlay 2 devices found on the network.</div>
         </section>
 
@@ -56,7 +56,7 @@
             <p class="section-description">Discover AirPlay 1 compatible devices on your network</p>
             <div id="airplay1-loading" class="loading" style="display: none;">Loading...</div>
             <div id="airplay1-error" class="error" style="display: none;"></div>
-            <div id="airplay1-devices" class="container-cards-grid" style="display: none;"></div>
+            <div id="airplay1-devices" style="display: none;"></div>
             <div id="airplay1-empty" class="loading" style="display: none;">No AirPlay 1 devices found on the network.</div>
         </section>
     </div>
@@ -94,20 +94,16 @@
             });
         }
 
-        function renderDeviceCard(device) {
+        function renderDeviceRow(device) {
             return `
-                <div class="container-card">
-                    <div class="container-card-header">
-                        <h3 class="container-card-title">${escapeHtml(device.name)}</h3>
-                    </div>
-                    <div class="container-card-body">
-                        ${device.address ? `<div class="status-item"><span class="status-label">IP Address:</span> <span class="status-value">${escapeHtml(device.address)}</span></div>` : ''}
-                        ${device.hostname ? `<div class="status-item"><span class="status-label">Hostname:</span> <span class="status-value">${escapeHtml(device.hostname)}</span></div>` : ''}
-                        ${device.port ? `<div class="status-item"><span class="status-label">Port:</span> <span class="status-value">${escapeHtml(device.port)}</span></div>` : ''}
-                        ${device.firmware_version ? `<div class="status-item"><span class="status-label">Firmware:</span> <span class="status-value">${escapeHtml(device.firmware_version)}</span></div>` : ''}
-                        ${device.feature_flags ? `<div class="status-item"><span class="status-label">Features:</span> <span class="status-value" style="font-family: monospace; font-size: 0.9rem;">${escapeHtml(device.feature_flags)}</span></div>` : ''}
-                    </div>
-                </div>
+                <tr class="device-row">
+                    <td class="device-name">${escapeHtml(device.name)}</td>
+                    <td class="device-address">${device.address ? escapeHtml(device.address) : '—'}</td>
+                    <td class="device-hostname">${device.hostname ? escapeHtml(device.hostname) : '—'}</td>
+                    <td class="device-port">${device.port ? escapeHtml(device.port) : '—'}</td>
+                    <td class="device-firmware">${device.firmware_version ? escapeHtml(device.firmware_version) : '—'}</td>
+                    <td class="device-features">${device.feature_flags ? `<code>${escapeHtml(device.feature_flags)}</code>` : '—'}</td>
+                </tr>
             `;
         }
 
@@ -120,10 +116,29 @@
             empty.style.display = 'none';
             
             if (devices && devices.length > 0) {
+                let tableHtml = `
+                    <table class="devices-table">
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>IP Address</th>
+                                <th>Hostname</th>
+                                <th>Port</th>
+                                <th>Firmware</th>
+                                <th>Features</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
                 devices.forEach(device => {
-                    container.innerHTML += renderDeviceCard(device);
+                    tableHtml += renderDeviceRow(device);
                 });
-                container.style.display = 'grid';
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+                container.innerHTML = tableHtml;
+                container.style.display = 'block';
             } else {
                 empty.style.display = 'block';
             }
