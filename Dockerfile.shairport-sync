@@ -130,12 +130,11 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '  echo "Configuring shairport-sync to advertise host IP: $HOST_IP"' >> /usr/local/bin/start.sh && \
     echo '  # Update config file to use host IP (if interfaces setting exists, update it; otherwise add it)' >> /usr/local/bin/start.sh && \
     echo '  if grep -q "^[[:space:]]*interfaces[[:space:]]*=" /etc/shairport-sync.conf 2>/dev/null; then' >> /usr/local/bin/start.sh && \
-    echo '    # Use a temp file to avoid "Resource busy" error when file is mounted' >> /usr/local/bin/start.sh && \
-    echo '    sed "s|^[[:space:]]*interfaces[[:space:]]*=.*|interfaces = \"$HOST_IP\";|" /etc/shairport-sync.conf > /tmp/shairport-sync.conf.tmp && mv /tmp/shairport-sync.conf.tmp /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
+    echo '    # Update existing interfaces setting using perl (works with mounted files)' >> /usr/local/bin/start.sh && \
+    echo '    perl -i -pe "s|^[[:space:]]*interfaces[[:space:]]*=.*|interfaces = \"$HOST_IP\";|" /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '  else' >> /usr/local/bin/start.sh && \
-    echo '    # Add interfaces setting after mdns_backend' >> /usr/local/bin/start.sh && \
-    echo '    # Use a temp file to avoid "Resource busy" error when file is mounted' >> /usr/local/bin/start.sh && \
-    echo '    sed "/mdns_backend/a\\\\tinterfaces = \"$HOST_IP\";" /etc/shairport-sync.conf > /tmp/shairport-sync.conf.tmp && mv /tmp/shairport-sync.conf.tmp /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
+    echo '    # Add interfaces setting after mdns_backend using perl (works with mounted files)' >> /usr/local/bin/start.sh && \
+    echo '    perl -i -pe "s|(mdns_backend = \"avahi\";)|\\$1\\n\\tinterfaces = \"$HOST_IP\";|" /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '  fi' >> /usr/local/bin/start.sh && \
     echo 'else' >> /usr/local/bin/start.sh && \
     echo '  echo "Warning: HOST_IP not set or invalid, shairport-sync may advertise Docker bridge IP"' >> /usr/local/bin/start.sh && \
