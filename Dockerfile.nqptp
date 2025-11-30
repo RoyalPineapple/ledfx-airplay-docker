@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     git \
     popt-dev \
     libconfig-dev \
-    libdaemon-dev
+    libdaemon-dev \
+    linux-headers
 
 # Build NQPTP from source
 WORKDIR /tmp
@@ -29,7 +30,8 @@ RUN apk del \
     autoconf \
     automake \
     libtool \
-    git && \
+    git \
+    linux-headers && \
     apk add --no-cache \
     popt \
     libconfig \
