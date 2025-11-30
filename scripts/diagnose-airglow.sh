@@ -22,11 +22,16 @@ fi
 # Parse arguments for JSON flag
 JSON_OUTPUT=false
 TARGET_HOST=""
+ARGS=()
+
 for arg in "$@"; do
     if [ "$arg" = "--json" ]; then
         JSON_OUTPUT=true
-    elif [ -z "$TARGET_HOST" ] && [ "$arg" != "--json" ]; then
-        TARGET_HOST="$arg"
+    else
+        ARGS+=("$arg")
+        if [ -z "$TARGET_HOST" ]; then
+            TARGET_HOST="$arg"
+        fi
     fi
 done
 
@@ -36,8 +41,8 @@ export JSON_OUTPUT
 # Source common functions
 source "${SCRIPT_DIR}/diagnostics/diagnose-common.sh"
 
-# Initialize diagnostic environment (pass target host if provided)
-if [ -n "$TARGET_HOST" ]; then
+# Initialize diagnostic environment (pass target host if provided, but not if it's empty or just whitespace)
+if [ -n "$TARGET_HOST" ] && [ "$TARGET_HOST" != "--json" ]; then
     diagnose_init "$TARGET_HOST"
 else
     diagnose_init
