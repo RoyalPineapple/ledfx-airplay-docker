@@ -45,38 +45,38 @@ fi
 
 if [ "$JSON_OUTPUT" = "true" ]; then
     # JSON output mode - collect all results
-    JSON_RESULTS="[]"
+    # Redirect all output to capture JSON lines
+    {
+        source "${SCRIPT_DIR}/diagnostics/diagnose-shairport.sh" >&2
+        source "${SCRIPT_DIR}/diagnostics/diagnose-avahi.sh" >&2
+        source "${SCRIPT_DIR}/diagnostics/diagnose-nqptp.sh" >&2
+        source "${SCRIPT_DIR}/diagnostics/diagnose-pulseaudio.sh" >&2
+        source "${SCRIPT_DIR}/diagnostics/diagnose-ledfx.sh" >&2
+    } 2>&1 | grep -E '^\{"status"' > /tmp/diagnostic-json.$$ || true
     
-    # Run component diagnostic scripts and collect JSON output
-    SHAIRPORT_OUTPUT=$(source "${SCRIPT_DIR}/diagnostics/diagnose-shairport.sh" 2>&1 | grep -E '^\{"status"' | jq -s '.')
-    AVAHI_OUTPUT=$(source "${SCRIPT_DIR}/diagnostics/diagnose-avahi.sh" 2>&1 | grep -E '^\{"status"' | jq -s '.')
-    NQPTP_OUTPUT=$(source "${SCRIPT_DIR}/diagnostics/diagnose-nqptp.sh" 2>&1 | grep -E '^\{"status"' | jq -s '.')
-    PULSE_OUTPUT=$(source "${SCRIPT_DIR}/diagnostics/diagnose-pulseaudio.sh" 2>&1 | grep -E '^\{"status"' | jq -s '.')
-    LEDFX_OUTPUT=$(source "${SCRIPT_DIR}/diagnostics/diagnose-ledfx.sh" 2>&1 | grep -E '^\{"status"' | jq -s '.')
-    
-    # Count warnings and errors
+    # Count warnings and errors from captured JSON
     WARNINGS=0
     ERRORS=0
     WARNING_MESSAGES=()
     
-    for output in "$SHAIRPORT_OUTPUT" "$AVAHI_OUTPUT" "$NQPTP_OUTPUT" "$PULSE_OUTPUT" "$LEDFX_OUTPUT"; do
-        if [ -n "$output" ] && [ "$output" != "null" ]; then
-            WARN_COUNT=$(echo "$output" | jq '[.[] | select(.status == "warn")] | length' 2>/dev/null || echo "0")
-            ERROR_COUNT=$(echo "$output" | jq '[.[] | select(.status == "error")] | length' 2>/dev/null || echo "0")
-            WARNINGS=$((WARNINGS + WARN_COUNT))
-            ERRORS=$((ERRORS + ERROR_COUNT))
-            
-            # Collect warning messages
-            WARN_MSGS=$(echo "$output" | jq -r '.[] | select(.status == "warn") | .message' 2>/dev/null || echo "")
-            if [ -n "$WARN_MSGS" ]; then
-                while IFS= read -r msg; do
-                    if [ -n "$msg" ]; then
-                        WARNING_MESSAGES+=("$msg")
+    if [ -f /tmp/diagnostic-json.$$ ]; then
+        while IFS= read -r line; do
+            if [ -n "$line" ]; then
+                STATUS=$(echo "$line" | jq -r '.status' 2>/dev/null || echo "")
+                MESSAGE=$(echo "$line" | jq -r '.message' 2>/dev/null || echo "")
+                
+                if [ "$STATUS" = "warn" ]; then
+                    WARNINGS=$((WARNINGS + 1))
+                    if [ -n "$MESSAGE" ] && [[ ! " ${WARNING_MESSAGES[@]} " =~ " ${MESSAGE} " ]]; then
+                        WARNING_MESSAGES+=("$MESSAGE")
                     fi
-                done <<< "$WARN_MSGS"
+                elif [ "$STATUS" = "error" ]; then
+                    ERRORS=$((ERRORS + 1))
+                fi
             fi
-        fi
-    done
+        done < /tmp/diagnostic-json.$$
+        rm -f /tmp/diagnostic-json.$$
+    fi
     
     # Output JSON summary
     jq -n \
