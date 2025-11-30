@@ -5,13 +5,11 @@
 #
 # Network Architecture:
 # - airglow-web: Bridge networking (port 8080 exposed)
-# - ledfx: Host networking (required for LED device communication across subnets)
+# - ledfx: Bridge networking (ports 8888, 5568, 21324, 4048, 4002, 4003 exposed)
 # - shairport-sync: Host networking (required for mDNS/Bonjour AirPlay discovery)
 #
-# Note: Both ledfx and shairport-sync use host networking:
-# - shairport-sync: Required for mDNS/Bonjour AirPlay discovery
-# - ledfx: Required to communicate with LED devices on different subnets (e.g., 192.168.42.x)
-#   Some devices may filter by source IP and only accept connections from specific IPs.
+# Note: shairport-sync uses host networking for mDNS/Bonjour AirPlay discovery.
+# ledfx uses bridge networking with port mappings for LED device communication.
 
 networks:
   airglow-network:
@@ -24,9 +22,17 @@ services:
     image: ghcr.io/ledfx/ledfx:latest
     container_name: ledfx
 
-    # Host networking required for LED device communication across subnets
-    # Devices on 192.168.42.x may reject connections from Docker bridge IPs (172.18.x.x)
-    network_mode: host
+    # Bridge networking - port mappings for web UI and LED protocols
+    networks:
+      - airglow-network
+
+    ports:
+      - "8888:8888"      # Web UI and API (HTTP)
+      - "5568:5568/udp"  # E1.31/sACN protocol (multicast)
+      - "21324:21324/udp" # WLED UDP protocol (unicast)
+      - "4048:4048/udp"  # DDP protocol (unicast)
+      - "4002:4002/udp"  # Govee device communication (source port)
+      - "4003:4003/udp"  # Govee device communication (destination port)
 
     volumes:
       # PulseAudio configuration and socket for inter-container audio
@@ -64,8 +70,9 @@ services:
       # Connect to LedFX's PulseAudio server via shared Unix socket
       - PULSE_SERVER=unix:/pulse/pulseaudio.socket
       - PULSE_COOKIE=/pulse/cookie
-      # LedFx API connection for session hooks - use localhost since both are on host networking
-      - LEDFX_HOST=localhost
+      # LedFx API connection for session hooks - use host IP since shairport-sync is on host networking
+      # and can access ledfx via the mapped port 8888
+      - LEDFX_HOST=192.168.2.201
       - LEDFX_PORT=8888
       # Optional log location for the session hook prototype
       - LEDFX_HOOK_LOG=/var/log/shairport-sync/ledfx-session-hook.log
@@ -103,9 +110,8 @@ services:
       - "8080:80"
 
     environment:
-      # LedFX API connection - use bridge gateway since ledfx is on host networking
-      # Bridge gateway (172.18.0.1) provides access to host networking services
-      - LEDFX_HOST=172.18.0.1
+      # LedFX API connection - use container name for service discovery
+      - LEDFX_HOST=ledfx
       - LEDFX_PORT=8888
 
     volumes:
