@@ -43,23 +43,21 @@
         <!-- AirPlay 2 Services Section -->
         <section class="status-section">
             <h2>AirPlay 2 Services (_raop._tcp)</h2>
-            <p class="section-description">Raw avahi-browse output for AirPlay 2 devices</p>
+            <p class="section-description">Discover AirPlay 2 compatible devices on your network</p>
             <div id="airplay2-loading" class="loading" style="display: none;">Loading...</div>
             <div id="airplay2-error" class="error" style="display: none;"></div>
-            <div id="airplay2-output" class="diagnostic-output" style="display: none;">
-                <pre id="airplay2-pre"></pre>
-            </div>
+            <div id="airplay2-devices" class="container-cards-grid" style="display: none;"></div>
+            <div id="airplay2-empty" class="loading" style="display: none;">No AirPlay 2 devices found on the network.</div>
         </section>
 
         <!-- AirPlay 1 Services Section -->
         <section class="status-section">
             <h2>AirPlay 1 Services (_airplay._tcp)</h2>
-            <p class="section-description">Raw avahi-browse output for AirPlay 1 devices</p>
+            <p class="section-description">Discover AirPlay 1 compatible devices on your network</p>
             <div id="airplay1-loading" class="loading" style="display: none;">Loading...</div>
             <div id="airplay1-error" class="error" style="display: none;"></div>
-            <div id="airplay1-output" class="diagnostic-output" style="display: none;">
-                <pre id="airplay1-pre"></pre>
-            </div>
+            <div id="airplay1-devices" class="container-cards-grid" style="display: none;"></div>
+            <div id="airplay1-empty" class="loading" style="display: none;">No AirPlay 1 devices found on the network.</div>
         </section>
     </div>
 
@@ -96,14 +94,51 @@
             });
         }
 
+        function renderDeviceCard(device) {
+            return `
+                <div class="container-card">
+                    <div class="container-card-header">
+                        <h3 class="container-card-title">${escapeHtml(device.name)}</h3>
+                    </div>
+                    <div class="container-card-body">
+                        ${device.address ? `<div class="status-item"><span class="status-label">IP Address:</span> <span class="status-value">${escapeHtml(device.address)}</span></div>` : ''}
+                        ${device.hostname ? `<div class="status-item"><span class="status-label">Hostname:</span> <span class="status-value">${escapeHtml(device.hostname)}</span></div>` : ''}
+                        ${device.port ? `<div class="status-item"><span class="status-label">Port:</span> <span class="status-value">${escapeHtml(device.port)}</span></div>` : ''}
+                        ${device.firmware_version ? `<div class="status-item"><span class="status-label">Firmware:</span> <span class="status-value">${escapeHtml(device.firmware_version)}</span></div>` : ''}
+                        ${device.feature_flags ? `<div class="status-item"><span class="status-label">Features:</span> <span class="status-value" style="font-family: monospace; font-size: 0.9rem;">${escapeHtml(device.feature_flags)}</span></div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDevices(containerId, devices, emptyId) {
+            const container = document.getElementById(containerId);
+            const empty = document.getElementById(emptyId);
+            
+            container.innerHTML = '';
+            container.style.display = 'none';
+            empty.style.display = 'none';
+            
+            if (devices && devices.length > 0) {
+                devices.forEach(device => {
+                    container.innerHTML += renderDeviceCard(device);
+                });
+                container.style.display = 'grid';
+            } else {
+                empty.style.display = 'block';
+            }
+        }
+
         async function refreshBrowser() {
             // Show loading states
             document.getElementById('airplay2-loading').style.display = 'block';
             document.getElementById('airplay2-error').style.display = 'none';
-            document.getElementById('airplay2-output').style.display = 'none';
+            document.getElementById('airplay2-devices').style.display = 'none';
+            document.getElementById('airplay2-empty').style.display = 'none';
             document.getElementById('airplay1-loading').style.display = 'block';
             document.getElementById('airplay1-error').style.display = 'none';
-            document.getElementById('airplay1-output').style.display = 'none';
+            document.getElementById('airplay1-devices').style.display = 'none';
+            document.getElementById('airplay1-empty').style.display = 'none';
 
             // Disable refresh button during load
             const refreshBtn = document.getElementById('refresh-btn');
@@ -123,39 +158,27 @@
                 // Update AirPlay 2 section
                 const airplay2Loading = document.getElementById('airplay2-loading');
                 const airplay2Error = document.getElementById('airplay2-error');
-                const airplay2Output = document.getElementById('airplay2-output');
-                const airplay2Pre = document.getElementById('airplay2-pre');
 
                 airplay2Loading.style.display = 'none';
 
                 if (data.airplay2.error) {
                     airplay2Error.textContent = `Error: ${escapeHtml(data.airplay2.error)}`;
                     airplay2Error.style.display = 'block';
-                } else if (data.airplay2.output) {
-                    airplay2Pre.textContent = data.airplay2.output;
-                    airplay2Output.style.display = 'block';
                 } else {
-                    airplay2Pre.textContent = 'No AirPlay 2 services found.';
-                    airplay2Output.style.display = 'block';
+                    renderDevices('airplay2-devices', data.airplay2.devices, 'airplay2-empty');
                 }
 
                 // Update AirPlay 1 section
                 const airplay1Loading = document.getElementById('airplay1-loading');
                 const airplay1Error = document.getElementById('airplay1-error');
-                const airplay1Output = document.getElementById('airplay1-output');
-                const airplay1Pre = document.getElementById('airplay1-pre');
 
                 airplay1Loading.style.display = 'none';
 
                 if (data.airplay1.error) {
                     airplay1Error.textContent = `Error: ${escapeHtml(data.airplay1.error)}`;
                     airplay1Error.style.display = 'block';
-                } else if (data.airplay1.output) {
-                    airplay1Pre.textContent = data.airplay1.output;
-                    airplay1Output.style.display = 'block';
                 } else {
-                    airplay1Pre.textContent = 'No AirPlay 1 services found.';
-                    airplay1Output.style.display = 'block';
+                    renderDevices('airplay1-devices', data.airplay1.devices, 'airplay1-empty');
                 }
 
                 // Update timestamp

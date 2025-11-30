@@ -950,12 +950,109 @@ def diagnose():
         }), 500
 
 
+def parse_avahi_browse_output(output):
+    """Parse avahi-browse output and extract human-readable device information"""
+    devices = []
+    
+    if not output or not output.strip():
+        return devices
+    
+    lines = output.split('\n')
+    current_device = {}
+    device_map = {}  # Track devices by service name to handle multiple interfaces
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Parsable format: fields separated by semicolons
+        # Format: =;interface;protocol;name;type;domain;flags;service_name
+        # Or: +;interface;protocol;name;type;domain;flags;service_name
+        if ';' in line and not line.startswith('   '):
+            parts = line.split(';')
+            if len(parts) >= 8:
+                event_type = parts[0]  # =, +, or -
+                interface = parts[1]
+                protocol = parts[2]
+                name = parts[3]
+                service_type = parts[4]
+                domain = parts[5]
+                flags = parts[6]
+                service_name = parts[7] if len(parts) > 7 else ''
+                
+                # Only process resolved service entries (= means resolved service)
+                if event_type == '=':
+                    # Extract device name from service name (format: DEVICEID@DeviceName)
+                    device_name = 'Unknown Device'
+                    if '@' in service_name:
+                        device_name = service_name.split('@')[-1]
+                    elif service_name:
+                        device_name = service_name
+                    
+                    # Clean up device name
+                    device_name = device_name.strip()
+                    if not device_name:
+                        device_name = name if name else 'Unknown Device'
+                    
+                    # Use service name as key to handle updates
+                    device_key = service_name or name
+                    if device_key not in device_map:
+                        device_map[device_key] = {
+                            'name': device_name,
+                            'interface': interface,
+                            'protocol': protocol,
+                            'hostname': None,
+                            'address': None,
+                            'port': None,
+                            'firmware_version': None,
+                            'feature_flags': None
+                        }
+                    current_device = device_map[device_key]
+        
+        # Parse resolved information (hostname, address, port, txt)
+        # These lines start with spaces and contain key=value pairs
+        elif current_device and line.startswith('   ') and '=' in line:
+            if 'hostname' in line.lower():
+                match = re.search(r'hostname\s*=\s*\[([^\]]+)\]', line, re.IGNORECASE)
+                if match:
+                    current_device['hostname'] = match.group(1)
+            elif 'address' in line.lower():
+                match = re.search(r'address\s*=\s*\[([^\]]+)\]', line, re.IGNORECASE)
+                if match:
+                    current_device['address'] = match.group(1)
+            elif 'port' in line.lower():
+                match = re.search(r'port\s*=\s*\[([^\]]+)\]', line, re.IGNORECASE)
+                if match:
+                    current_device['port'] = match.group(1)
+            elif 'txt' in line.lower():
+                # Parse TXT record for firmware version and feature flags
+                txt_match = re.search(r'txt\s*=\s*\[(.*?)\]', line, re.IGNORECASE)
+                if txt_match:
+                    txt_content = txt_match.group(1)
+                    # Extract firmware version (fv=)
+                    fv_match = re.search(r'"fv=([^"]+)"', txt_content)
+                    if fv_match:
+                        current_device['firmware_version'] = fv_match.group(1)
+                    # Extract feature flags (ft=)
+                    ft_match = re.search(r'"ft=([^"]+)"', txt_content)
+                    if ft_match:
+                        current_device['feature_flags'] = ft_match.group(1)
+    
+    # Convert device map to list, only including devices with address or hostname
+    for device in device_map.values():
+        if device.get('address') or device.get('hostname'):
+            devices.append(device)
+    
+    return devices
+
+
 @app.route('/api/browser')
 def get_airplay_devices():
     """Get AirPlay devices using avahi-browse"""
     result = {
-        'airplay2': {'output': '', 'error': None},
-        'airplay1': {'output': '', 'error': None},
+        'airplay2': {'devices': [], 'error': None},
+        'airplay1': {'devices': [], 'error': None},
         'timestamp': datetime.now().isoformat()
     }
     
@@ -968,15 +1065,16 @@ def get_airplay_devices():
         return jsonify(result)
     
     # Browse AirPlay 2 services (_raop._tcp)
+    # Use -p for parsable output and -r for resolve
     try:
         airplay2_result = subprocess.run(
-            ['docker', 'exec', 'avahi', 'avahi-browse', '-rt', '_raop._tcp'],
+            ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_raop._tcp'],
             capture_output=True,
             text=True,
             timeout=10
         )
         if airplay2_result.returncode == 0:
-            result['airplay2']['output'] = airplay2_result.stdout
+            result['airplay2']['devices'] = parse_avahi_browse_output(airplay2_result.stdout)
         else:
             result['airplay2']['error'] = airplay2_result.stderr or 'Command failed'
     except subprocess.TimeoutExpired:
@@ -986,15 +1084,16 @@ def get_airplay_devices():
         result['airplay2']['error'] = str(e) if app.debug else 'Error executing avahi-browse'
     
     # Browse AirPlay 1 services (_airplay._tcp)
+    # Use -p for parsable output and -r for resolve
     try:
         airplay1_result = subprocess.run(
-            ['docker', 'exec', 'avahi', 'avahi-browse', '-rt', '_airplay._tcp'],
+            ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_airplay._tcp'],
             capture_output=True,
             text=True,
             timeout=10
         )
         if airplay1_result.returncode == 0:
-            result['airplay1']['output'] = airplay1_result.stdout
+            result['airplay1']['devices'] = parse_avahi_browse_output(airplay1_result.stdout)
         else:
             result['airplay1']['error'] = airplay1_result.stderr or 'Command failed'
     except subprocess.TimeoutExpired:
