@@ -32,6 +32,10 @@ services:
       - "21324:21324/udp" # WLED UDP protocol (unicast)
       - "4048:4048/udp"  # DDP protocol (unicast)
 
+    # Security options for LXC containers (allow sysctl access)
+    security_opt:
+      - seccomp=unconfined
+
     volumes:
       # PulseAudio configuration and socket for inter-container audio
       - ./pulse:/home/ledfx/.config/pulse
@@ -93,7 +97,7 @@ services:
 
   airglow-web:
     # Airglow Status Dashboard - Web interface for status and configuration
-    # Web UI: http://localhost (port 80)
+    # Web UI: http://localhost:8080
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -105,6 +109,10 @@ services:
 
     ports:
       - "8080:80"
+
+    # Security options for LXC containers (allow sysctl access)
+    security_opt:
+      - seccomp=unconfined
 
     environment:
       # LedFX API connection - use container name for service discovery
