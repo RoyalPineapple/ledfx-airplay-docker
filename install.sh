@@ -758,6 +758,14 @@ function start_stack() {
     if [[ -n "$host_ip" ]] && [[ "$host_ip" != "127.0.0.1" ]]; then
         msg_ok "Detected host IP: $host_ip"
         export HOST_IP="$host_ip"
+        
+        # Update docker-compose.yml to include HOST_IP in environment
+        # This ensures it persists across container restarts
+        if grep -q "HOST_IP=\${HOST_IP:-}" "${INSTALL_DIR}/docker-compose.yml"; then
+            # Replace the placeholder with the actual IP
+            sed -i "s|HOST_IP=\${HOST_IP:-}|HOST_IP=${host_ip}|" "${INSTALL_DIR}/docker-compose.yml"
+            msg_ok "Updated docker-compose.yml with host IP: $host_ip"
+        fi
     else
         msg_warn "Could not detect host IP - shairport-sync may advertise Docker bridge IP"
         msg_warn "AirPlay connections may fail from outside the Docker network"
