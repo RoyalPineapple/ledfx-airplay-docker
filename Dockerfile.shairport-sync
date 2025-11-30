@@ -49,7 +49,7 @@ RUN apk add --no-cache \
     jq \
     yq \
     # Docker CLI for querying Avahi container network interfaces
-    docker-cli
+    docker
 
 # Build shairport-sync with AirPlay 2 support (ALAC support removed per user request)
 RUN (git clone --depth 1 --branch ${SHAIRPORT_SYNC_VERSION} https://github.com/mikebrady/shairport-sync.git || \
