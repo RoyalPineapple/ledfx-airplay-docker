@@ -114,6 +114,48 @@ function install_docker() {
     msg_ok "Docker installed successfully"
 }
 
+# Install jq (required for diagnostic scripts)
+function install_jq() {
+    if command -v jq &>/dev/null; then
+        local jq_version
+        jq_version=$(jq --version 2>/dev/null || echo "unknown")
+        msg_ok "jq already installed (version ${jq_version})"
+        return 0
+    fi
+
+    msg_info "Installing jq (required for diagnostic scripts)..."
+
+    if [[ "${DRY_RUN}" == true ]]; then
+        msg_info "[DRY RUN] Would install jq"
+        return 0
+    fi
+
+    # Install jq based on distribution
+    if command -v apt-get &>/dev/null; then
+        apt-get update -qq >/dev/null 2>&1
+        apt-get install -y -qq jq >/dev/null 2>&1 || {
+            msg_error "Failed to install jq"
+            exit 1
+        }
+    elif command -v yum &>/dev/null; then
+        yum install -y -q jq >/dev/null 2>&1 || {
+            msg_error "Failed to install jq"
+            exit 1
+        }
+    elif command -v brew &>/dev/null; then
+        brew install jq >/dev/null 2>&1 || {
+            msg_error "Failed to install jq"
+            exit 1
+        }
+    else
+        msg_warn "Could not detect package manager to install jq"
+        msg_warn "Please install jq manually: https://stedolan.github.io/jq/download/"
+        return 1
+    fi
+
+    msg_ok "jq installed successfully"
+}
+
 # Set up installation directory structure
 function setup_directory() {
     msg_info "Setting up installation directory..."
@@ -835,6 +877,7 @@ function main() {
     check_root
     detect_distro
     install_docker
+    install_jq
     setup_directory
     copy_configs
     start_stack
