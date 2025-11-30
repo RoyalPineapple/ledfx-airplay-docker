@@ -139,8 +139,7 @@ services:
       - "7000:7000"      # AirPlay control (TCP)
       - "5000:5000"      # AirPlay audio (TCP)
       - "5000:5000/udp"  # AirPlay audio (UDP)
-      - "319:319/udp"    # NQPTP (AirPlay 2 timing)
-      - "320:320/udp"    # NQPTP (AirPlay 2 timing)
+      # Note: NQPTP ports (319, 320/UDP) are handled by the nqptp container on host networking
 
     environment:
       # Connect to LedFX's PulseAudio server via shared Unix socket
