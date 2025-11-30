@@ -168,9 +168,11 @@ function setup_directory() {
         return 0
     fi
 
-    # Handle existing installation
+    # Handle existing installation (upgrade mode)
+    local is_upgrade=false
     if [[ -d "${INSTALL_DIR}" ]]; then
-        msg_warn "Installation directory already exists: ${INSTALL_DIR}"
+        is_upgrade=true
+        msg_info "Existing installation detected - performing upgrade (preserving user configurations)..."
 
         # Check if there's a running stack
         if docker compose -f "${INSTALL_DIR}/docker-compose.yml" ps --quiet 2>/dev/null | grep -q .; then
@@ -178,53 +180,32 @@ function setup_directory() {
             docker compose -f "${INSTALL_DIR}/docker-compose.yml" down
         fi
 
+        # Backup only user-editable config files that will be preserved
         local backup_dir="${INSTALL_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
-        msg_info "Backing up existing installation to: ${backup_dir}"
-        
-        # Preserve LedFX data before moving directory
-        local ledfx_data_backup="${backup_dir}/ledfx-data"
+        mkdir -p "${backup_dir}/configs"
+        if [[ -f "${INSTALL_DIR}/configs/shairport-sync.conf" ]]; then
+            cp "${INSTALL_DIR}/configs/shairport-sync.conf" "${backup_dir}/configs/" 2>/dev/null || true
+        fi
+        if [[ -f "${INSTALL_DIR}/configs/ledfx-hooks.yaml" ]]; then
+            cp "${INSTALL_DIR}/configs/ledfx-hooks.yaml" "${backup_dir}/configs/" 2>/dev/null || true
+        fi
         if [[ -d "${INSTALL_DIR}/ledfx-data" ]]; then
-            mkdir -p "${backup_dir}"
-            cp -r "${INSTALL_DIR}/ledfx-data" "${ledfx_data_backup}" || {
-                msg_warn "Failed to backup LedFX data"
-            }
+            cp -r "${INSTALL_DIR}/ledfx-data" "${backup_dir}/" 2>/dev/null || true
         fi
-        
-        mv "${INSTALL_DIR}" "${backup_dir}"
-        msg_ok "Backup created"
-        
-        # Restore LedFX data after creating new directory
-        if [[ -d "${ledfx_data_backup}" ]]; then
-            msg_info "Preserving LedFX devices and configuration..."
-        fi
+        msg_ok "User configurations backed up to: ${backup_dir}"
     fi
 
-    # Create directory structure
+    # Create directory structure (preserve existing directories)
     mkdir -p "${INSTALL_DIR}"
     mkdir -p "${INSTALL_DIR}/configs"
     mkdir -p "${INSTALL_DIR}/pulse"
     mkdir -p "${INSTALL_DIR}/ledfx-data"
-    
-    # Restore LedFX data from backup if it exists
-    if [[ -n "${backup_dir:-}" ]] && [[ -d "${backup_dir}/ledfx-data" ]]; then
-        msg_info "Restoring LedFX devices and configuration from backup..."
-        # Use rsync to preserve all files, permissions, and structure
-        if command -v rsync >/dev/null 2>&1; then
-            rsync -a "${backup_dir}/ledfx-data/" "${INSTALL_DIR}/ledfx-data/" || {
-                msg_warn "rsync failed, trying cp..."
-                cp -r "${backup_dir}/ledfx-data/"* "${INSTALL_DIR}/ledfx-data/" 2>/dev/null || {
-                    msg_warn "Failed to restore LedFX data from backup"
-                }
-            }
-        else
-            cp -r "${backup_dir}/ledfx-data/"* "${INSTALL_DIR}/ledfx-data/" 2>/dev/null || {
-                msg_warn "Failed to restore LedFX data from backup"
-            }
-        fi
-        msg_ok "LedFX data restored from backup"
-    fi
 
     # Set ownership for Pulse and LedFX data directories (LedFX runs as UID 1000)
+    chown -R 1000:1000 "${INSTALL_DIR}/pulse" || {
+        msg_warn "Failed to set ownership on pulse directory"
+        msg_warn "You may need to manually run: sudo chown -R 1000:1000 ${INSTALL_DIR}/pulse"
+    }
     chown -R 1000:1000 "${INSTALL_DIR}/pulse" || {
         msg_warn "Failed to set ownership on pulse directory"
         msg_warn "You may need to manually run: sudo chown -R 1000:1000 ${INSTALL_DIR}/pulse"
@@ -235,11 +216,11 @@ function setup_directory() {
     }
 
     # Copy default LedFX config file only if it doesn't exist (idempotent)
-    # IMPORTANT: This check happens AFTER restore, so we don't overwrite restored configs
+    # Always preserve existing LedFX data directory during upgrades
     local ledfx_config="${INSTALL_DIR}/ledfx-data/config.json"
     local default_config="${SCRIPT_DIR}/configs/ledfx-config.json"
     if [[ ! -f "${ledfx_config}" ]] && [[ -f "${default_config}" ]]; then
-        msg_info "No existing LedFX config found, copying default config with pulse audio device..."
+        msg_info "Copying default LedFX config file with pulse audio device..."
         cp "${default_config}" "${ledfx_config}" || {
             msg_warn "Failed to copy LedFX config file"
         }
@@ -248,7 +229,7 @@ function setup_directory() {
         }
         msg_ok "LedFX config file created with pulse audio device"
     elif [[ -f "${ledfx_config}" ]]; then
-        msg_info "LedFX config already exists, preserving existing devices and configuration"
+        msg_info "Preserving existing LedFX configuration (devices and virtuals will be kept)"
     fi
 
     msg_ok "Directory structure created"
@@ -326,15 +307,29 @@ function copy_configs() {
         fi
         
         if [[ -d "${SCRIPT_DIR}/configs" ]]; then
-            # Copy config files, but exclude ledfx-hooks.yaml (created on first config save) and ledfx-config.json (used for ledfx-data)
+            # Copy config files, preserving user customizations
             mkdir -p "${INSTALL_DIR}/configs"
             for config_file in "${SCRIPT_DIR}/configs"/*; do
                 local basename_file="$(basename "${config_file}")"
                 if [[ -f "${config_file}" ]] && [[ "${basename_file}" != "ledfx-hooks.yaml" ]] && [[ "${basename_file}" != "ledfx-config.json" ]]; then
-                    cp "${config_file}" "${INSTALL_DIR}/configs/" || {
-                        msg_error "Failed to copy ${basename_file}"
-                        exit 1
-                    }
+                    local target_file="${INSTALL_DIR}/configs/${basename_file}"
+                    # Preserve user-editable config files (shairport-sync.conf) if they exist
+                    if [[ "${basename_file}" == "shairport-sync.conf" ]] && [[ -f "${target_file}" ]]; then
+                        msg_info "Preserving existing ${basename_file} (user customizations will be kept)"
+                        # Only copy if target doesn't exist or is empty
+                        if [[ ! -s "${target_file}" ]]; then
+                            cp "${config_file}" "${target_file}" || {
+                                msg_error "Failed to copy ${basename_file}"
+                                exit 1
+                            }
+                        fi
+                    else
+                        # Always copy other config files (avahi-daemon.conf, etc.)
+                        cp "${config_file}" "${target_file}" || {
+                            msg_error "Failed to copy ${basename_file}"
+                            exit 1
+                        }
+                    fi
                 fi
             done
         fi
@@ -442,15 +437,30 @@ function copy_configs() {
         fi
         
         # Copy configs directory (excluding ledfx-hooks.yaml and ledfx-config.json)
+        # Preserve user-editable config files during upgrade
         if [[ -d "${temp_repo_dir}/configs" ]]; then
             mkdir -p "${INSTALL_DIR}/configs"
             for config_file in "${temp_repo_dir}/configs"/*; do
                 local basename_file="$(basename "${config_file}")"
                 if [[ -f "${config_file}" ]] && [[ "${basename_file}" != "ledfx-hooks.yaml" ]] && [[ "${basename_file}" != "ledfx-config.json" ]]; then
-                    cp "${config_file}" "${INSTALL_DIR}/configs/" || {
-                        msg_error "Failed to copy ${basename_file}"
-                        exit 1
-                    }
+                    local target_file="${INSTALL_DIR}/configs/${basename_file}"
+                    # Preserve user-editable config files (shairport-sync.conf) if they exist
+                    if [[ "${basename_file}" == "shairport-sync.conf" ]] && [[ -f "${target_file}" ]]; then
+                        msg_info "Preserving existing ${basename_file} (user customizations will be kept)"
+                        # Only copy if target doesn't exist or is empty
+                        if [[ ! -s "${target_file}" ]]; then
+                            cp "${config_file}" "${target_file}" || {
+                                msg_error "Failed to copy ${basename_file}"
+                                exit 1
+                            }
+                        fi
+                    else
+                        # Always copy other config files (avahi-daemon.conf, etc.)
+                        cp "${config_file}" "${target_file}" || {
+                            msg_error "Failed to copy ${basename_file}"
+                            exit 1
+                        }
+                    fi
                 fi
             done
         fi
