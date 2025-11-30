@@ -171,8 +171,10 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^avahi$'; then
     echo
     echo "  mDNS Services:"
     # Use timeout to prevent hanging - avahi-browse can be slow
-    AIRPLAY_SERVICES=$(timeout 5 docker_cmd exec avahi avahi-browse -a -r 2>&1 | grep -i 'airplay\|raop' | wc -l | tr -d ' ' || echo "0")
-    if [ "$AIRPLAY_SERVICES" -gt 0 ]; then
+    AIRPLAY_SERVICES=$(timeout 5 docker_cmd exec avahi avahi-browse -a -r 2>&1 | grep -i 'airplay\|raop' | wc -l 2>/dev/null | tr -d ' \n' || echo "0")
+    # Ensure we have a valid integer (default to 0 if empty or invalid)
+    AIRPLAY_SERVICES=${AIRPLAY_SERVICES:-0}
+    if [ "${AIRPLAY_SERVICES}" -gt 0 ] 2>/dev/null; then
         check_ok "Found $AIRPLAY_SERVICES AirPlay service(s) on network"
         
         # Check if our service is advertised (with timeout)
@@ -270,8 +272,10 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     fi
     
     # Check sink-inputs (active audio streams)
-    SINK_INPUTS=$(docker_cmd exec ledfx pactl list sink-inputs 2>/dev/null | grep -c 'Sink Input #' || echo "0")
-    if [ "$SINK_INPUTS" -gt 0 ]; then
+    SINK_INPUTS=$(docker_cmd exec ledfx pactl list sink-inputs 2>/dev/null | grep -c 'Sink Input #' 2>/dev/null | tr -d ' \n' || echo "0")
+    # Ensure we have a valid integer (default to 0 if empty or invalid)
+    SINK_INPUTS=${SINK_INPUTS:-0}
+    if [ "${SINK_INPUTS}" -gt 0 ] 2>/dev/null; then
         check_ok "Active audio streams: $SINK_INPUTS"
         echo
         echo "  Sink Inputs:"
