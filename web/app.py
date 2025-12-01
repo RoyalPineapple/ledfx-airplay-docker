@@ -1027,7 +1027,7 @@ def parse_avahi_browse_output(output):
                         feature_flags = ft_match.group(1)
                 
                 # Use hostname as key to deduplicate (same device may appear on IPv4 and IPv6)
-                # Consolidate multiple addresses for the same hostname
+                # Prefer IPv4 over IPv6 - only keep the primary address
                 if hostname:
                     device_key = hostname.lower()
                     if device_key not in device_map:
@@ -1038,21 +1038,17 @@ def parse_avahi_browse_output(output):
                             'protocol': protocol,
                             'hostname': hostname,
                             'address': address,
-                            'addresses': [address] if address else [],  # Track all addresses
                             'port': port,
                             'firmware_version': firmware_version,
                             'feature_flags': feature_flags
                         }
                     else:
-                        # Existing device - consolidate information
+                        # Existing device - prefer IPv4 over IPv6
                         existing = device_map[device_key]
-                        # Prefer IPv4 over IPv6 for primary address
-                        if protocol == 'IPv4' and existing.get('protocol') == 'IPv6':
+                        # Only update if we have IPv4 and existing is IPv6, or if existing has no address
+                        if (protocol == 'IPv4' and existing.get('protocol') == 'IPv6') or not existing.get('address'):
                             existing['address'] = address
                             existing['protocol'] = protocol
-                        # Add address to list if not already present
-                        if address and address not in existing.get('addresses', []):
-                            existing['addresses'].append(address)
                         # Update firmware/features if missing
                         if not existing.get('firmware_version') and firmware_version:
                             existing['firmware_version'] = firmware_version
@@ -1068,22 +1064,16 @@ def parse_avahi_browse_output(output):
                             'protocol': protocol,
                             'hostname': hostname,
                             'address': address,
-                            'addresses': [address] if address else [],
                             'port': port,
                             'firmware_version': firmware_version,
                             'feature_flags': feature_flags
                         }
     
-    # Convert device map to list, format addresses for display
+    # Convert device map to list - use single address only
     for device in device_map.values():
         if device.get('address') or device.get('hostname'):
-            # Format multiple addresses for display
-            addresses = device.get('addresses', [])
-            if len(addresses) > 1:
-                # Show primary address, with note about multiple
-                device['address_display'] = f"{device.get('address', '')} (+{len(addresses) - 1} more)"
-            else:
-                device['address_display'] = device.get('address', '—')
+            # Use single address only - no consolidation display
+            device['address_display'] = device.get('address', '—')
             devices.append(device)
     
     return devices
