@@ -270,38 +270,49 @@ function copy_configs() {
     # Try local files first, fallback to cloning from GitHub
     if [[ -f "${SCRIPT_DIR}/docker-compose.yml" ]]; then
         msg_info "Using local configuration files..."
-        cp "${SCRIPT_DIR}/docker-compose.yml" "${INSTALL_DIR}/" || {
-            msg_error "Failed to copy docker-compose.yml"
-            exit 1
-        }
+        # Only copy if source and destination are different files
+        if [[ "${SCRIPT_DIR}/docker-compose.yml" != "${INSTALL_DIR}/docker-compose.yml" ]]; then
+            cp "${SCRIPT_DIR}/docker-compose.yml" "${INSTALL_DIR}/" || {
+                msg_error "Failed to copy docker-compose.yml"
+                exit 1
+            }
+        fi
         
         # Copy Dockerfiles needed for building images
         if [[ -f "${SCRIPT_DIR}/Dockerfile.web" ]]; then
-            cp "${SCRIPT_DIR}/Dockerfile.web" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.web"
-                exit 1
-            }
+            if [[ "${SCRIPT_DIR}/Dockerfile.web" != "${INSTALL_DIR}/Dockerfile.web" ]]; then
+                cp "${SCRIPT_DIR}/Dockerfile.web" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.web"
+                    exit 1
+                }
+            fi
         fi
         
         if [[ -f "${SCRIPT_DIR}/Dockerfile.shairport-sync" ]]; then
-            cp "${SCRIPT_DIR}/Dockerfile.shairport-sync" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.shairport-sync"
-                exit 1
-            }
+            if [[ "${SCRIPT_DIR}/Dockerfile.shairport-sync" != "${INSTALL_DIR}/Dockerfile.shairport-sync" ]]; then
+                cp "${SCRIPT_DIR}/Dockerfile.shairport-sync" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.shairport-sync"
+                    exit 1
+                }
+            fi
         fi
         
         if [[ -f "${SCRIPT_DIR}/Dockerfile.avahi" ]]; then
-            cp "${SCRIPT_DIR}/Dockerfile.avahi" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.avahi"
-                exit 1
-            }
+            if [[ "${SCRIPT_DIR}/Dockerfile.avahi" != "${INSTALL_DIR}/Dockerfile.avahi" ]]; then
+                cp "${SCRIPT_DIR}/Dockerfile.avahi" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.avahi"
+                    exit 1
+                }
+            fi
         fi
         
         if [[ -f "${SCRIPT_DIR}/Dockerfile.nqptp" ]]; then
-            cp "${SCRIPT_DIR}/Dockerfile.nqptp" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.nqptp"
-                exit 1
-            }
+            if [[ "${SCRIPT_DIR}/Dockerfile.nqptp" != "${INSTALL_DIR}/Dockerfile.nqptp" ]]; then
+                cp "${SCRIPT_DIR}/Dockerfile.nqptp" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.nqptp"
+                    exit 1
+                }
+            fi
         fi
         
         # Copy web application directory
