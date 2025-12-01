@@ -574,7 +574,7 @@ function copy_configs() {
 
     msg_ok "Configuration files deployed"
     
-    # Configure ALAC support if requested
+    # Configure shairport-sync image (use pre-built by default, ALAC only if explicitly requested)
     configure_alac_support
     
     # Initialize git repository for future updates (only if installing from a git repo)
