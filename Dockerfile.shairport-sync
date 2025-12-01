@@ -43,7 +43,7 @@ RUN apk add --no-cache \
     popt \
     libplist \
     libsodium \
-    ffmpeg-libs \
+    ffmpeg \
     libgcrypt \
     # Utilities for hook scripts
     jq \
