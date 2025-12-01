@@ -25,6 +25,13 @@ RUN apk add --no-cache \
     soxr-dev \
     dbus-dev \
     popt-dev \
+    # AirPlay 2 dependencies
+    libplist-dev \
+    libsodium-dev \
+    ffmpeg-dev \
+    util-linux-dev \
+    libgcrypt-dev \
+    vim \
     # Runtime dependencies (will be needed later)
     pulseaudio \
     avahi \
@@ -34,6 +41,10 @@ RUN apk add --no-cache \
     soxr \
     dbus \
     popt \
+    libplist \
+    libsodium \
+    ffmpeg \
+    libgcrypt \
     # Utilities for hook scripts
     jq \
     yq
@@ -62,6 +73,7 @@ RUN (git clone --depth 1 --branch ${SHAIRPORT_SYNC_VERSION} https://github.com/m
         --with-ssl=openssl \
         --with-soxr \
         --with-metadata \
+        --with-airplay-2 \
         --sysconfdir=/etc \
         --prefix=/usr/local && \
     make -j$(nproc) && \
