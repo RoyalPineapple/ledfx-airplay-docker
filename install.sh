@@ -410,39 +410,52 @@ function copy_configs() {
         
         # Copy docker-compose.yml
         if [[ -f "${temp_repo_dir}/docker-compose.yml" ]]; then
-            cp "${temp_repo_dir}/docker-compose.yml" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy docker-compose.yml"
-                exit 1
-            }
+            # Only copy if source and destination are different files
+            if [[ "${temp_repo_dir}/docker-compose.yml" != "${INSTALL_DIR}/docker-compose.yml" ]]; then
+                cp "${temp_repo_dir}/docker-compose.yml" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy docker-compose.yml"
+                    exit 1
+                }
+            else
+                msg_info "docker-compose.yml already in place, skipping copy"
+            fi
         fi
         
         # Copy Dockerfiles
         if [[ -f "${temp_repo_dir}/Dockerfile.web" ]]; then
-            cp "${temp_repo_dir}/Dockerfile.web" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.web"
-                exit 1
-            }
+            if [[ "${temp_repo_dir}/Dockerfile.web" != "${INSTALL_DIR}/Dockerfile.web" ]]; then
+                cp "${temp_repo_dir}/Dockerfile.web" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.web"
+                    exit 1
+                }
+            fi
         fi
         
         if [[ -f "${temp_repo_dir}/Dockerfile.shairport-sync" ]]; then
-            cp "${temp_repo_dir}/Dockerfile.shairport-sync" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.shairport-sync"
-                exit 1
-            }
+            if [[ "${temp_repo_dir}/Dockerfile.shairport-sync" != "${INSTALL_DIR}/Dockerfile.shairport-sync" ]]; then
+                cp "${temp_repo_dir}/Dockerfile.shairport-sync" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.shairport-sync"
+                    exit 1
+                }
+            fi
         fi
         
         if [[ -f "${temp_repo_dir}/Dockerfile.avahi" ]]; then
-            cp "${temp_repo_dir}/Dockerfile.avahi" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.avahi"
-                exit 1
-            }
+            if [[ "${temp_repo_dir}/Dockerfile.avahi" != "${INSTALL_DIR}/Dockerfile.avahi" ]]; then
+                cp "${temp_repo_dir}/Dockerfile.avahi" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.avahi"
+                    exit 1
+                }
+            fi
         fi
         
         if [[ -f "${temp_repo_dir}/Dockerfile.nqptp" ]]; then
-            cp "${temp_repo_dir}/Dockerfile.nqptp" "${INSTALL_DIR}/" || {
-                msg_error "Failed to copy Dockerfile.nqptp"
-                exit 1
-            }
+            if [[ "${temp_repo_dir}/Dockerfile.nqptp" != "${INSTALL_DIR}/Dockerfile.nqptp" ]]; then
+                cp "${temp_repo_dir}/Dockerfile.nqptp" "${INSTALL_DIR}/" || {
+                    msg_error "Failed to copy Dockerfile.nqptp"
+                    exit 1
+                }
+            fi
         fi
         
         # Copy web directory
