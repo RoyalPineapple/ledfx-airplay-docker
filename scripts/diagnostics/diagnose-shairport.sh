@@ -34,6 +34,26 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
             check_warn "Could not determine device name"
         fi
         
+        # Check AirPlay version (1 vs 2)
+        echo
+        echo "  AirPlay Version:"
+        VERSION_STRING=$(docker_cmd exec shairport-sync shairport-sync -V 2>&1 | head -1 || echo "")
+        if echo "$VERSION_STRING" | grep -qi "airplay2"; then
+            check_ok "Built with AirPlay 2 support"
+        else
+            check_warn "Not built with AirPlay 2 support (version: $VERSION_STRING)"
+        fi
+        
+        # Check if running in AirPlay 2 mode
+        STARTUP_MODE=$(docker_cmd logs shairport-sync 2>&1 | grep -i "Startup in" | tail -1 || echo "")
+        if echo "$STARTUP_MODE" | grep -qi "AirPlay 2 mode"; then
+            check_ok "Running in AirPlay 2 mode"
+        elif echo "$STARTUP_MODE" | grep -qi "classic Airplay.*AirPlay 1"; then
+            check_warn "Running in AirPlay 1 (classic) mode - AirPlay 2 not available"
+        else
+            check_warn "Could not determine AirPlay mode from logs"
+        fi
+        
         # Check session hooks
         HOOK_LINE=$(docker_cmd exec shairport-sync shairport-sync --displayConfig 2>&1 | grep 'run_this_before_entering_active_state' | head -1 || echo "")
         if [ -n "$HOOK_LINE" ]; then
@@ -75,9 +95,21 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
         check_fail "Not connected to Avahi (D-Bus socket not accessible)"
     fi
     
-    # Check connection to NQPTP (shared memory)
+    # Check connection to NQPTP (shared memory) - required for AirPlay 2
+    echo
+    echo "  NQPTP (AirPlay 2 Timing):"
     if docker_cmd exec shairport-sync test -d /dev/shm 2>/dev/null; then
         check_ok "Shared memory accessible (NQPTP connection available)"
+        # Check if NQPTP container is running (required for AirPlay 2)
+        if docker_cmd ps --format '{{.Names}}' | grep -q '^nqptp$'; then
+            if docker_cmd exec nqptp pgrep -f nqptp > /dev/null 2>&1; then
+                check_ok "NQPTP container is running (AirPlay 2 timing available)"
+            else
+                check_warn "NQPTP container exists but process not running"
+            fi
+        else
+            check_warn "NQPTP container not found (required for AirPlay 2)"
+        fi
     else
         check_warn "Shared memory not accessible (NQPTP connection may fail)"
     fi
@@ -168,7 +200,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
     ACTIVITY=$(docker_cmd logs shairport-sync --since 5m 2>&1 | grep -iE '(connection|playback|active|rtsp)' | grep -v 'mutex_lock' | tail -5)
     if [ -n "$ACTIVITY" ]; then
         echo "$ACTIVITY" | while read line; do
-            echo "    $line"
+        echo "    $line"
         done
     else
         echo "    No recent activity"
