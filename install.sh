@@ -10,6 +10,9 @@ VERSION="1.0.0"
 # Configuration
 INSTALL_DIR="/opt/airglow"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# Normalize paths for comparison (resolve symlinks and relative paths)
+SCRIPT_DIR_ABS="$(cd "${SCRIPT_DIR}" && pwd -P)"
+INSTALL_DIR_ABS="$(cd "${INSTALL_DIR}" 2>/dev/null && pwd -P || echo "${INSTALL_DIR}")"
 REPO_URL="https://github.com/RoyalPineapple/airglow.git"
 REPO_RAW_URL="https://raw.githubusercontent.com/RoyalPineapple/airglow/master"
 DRY_RUN=false
@@ -269,7 +272,7 @@ function copy_configs() {
     
     # Try local files first, fallback to cloning from GitHub
     # Skip local copy if SCRIPT_DIR is the same as INSTALL_DIR (running from install directory)
-    if [[ -f "${SCRIPT_DIR}/docker-compose.yml" ]] && [[ "${SCRIPT_DIR}" != "${INSTALL_DIR}" ]]; then
+    if [[ -f "${SCRIPT_DIR}/docker-compose.yml" ]] && [[ "${SCRIPT_DIR_ABS}" != "${INSTALL_DIR_ABS}" ]]; then
         msg_info "Using local configuration files..."
         # Only copy if source and destination are different files
         if [[ "${SCRIPT_DIR}/docker-compose.yml" != "${INSTALL_DIR}/docker-compose.yml" ]]; then
