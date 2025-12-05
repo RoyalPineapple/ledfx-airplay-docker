@@ -1049,7 +1049,8 @@ def restart_container(container_name):
     """Restart a specific container"""
     # Validate container name (security: only allow known containers)
     # Exclude airglow-web as it's the UI itself
-    allowed_containers = ['avahi', 'nqptp', 'ledfx', 'shairport-sync']
+    # Note: avahi and nqptp are now built into shairport-sync
+    allowed_containers = ['ledfx', 'shairport-sync']
     if container_name not in allowed_containers:
         return jsonify({'error': 'Invalid container name'}), 400
     
