@@ -261,7 +261,8 @@
                 html += `<div class="status-item"><span class="status-label">Active Streams:</span> <span class="status-value">${audio.active_streams || 0}</span></div>`;
                 if (data.ledfx_audio_device?.configured_device) {
                     const deviceName = data.ledfx_audio_device.configured_device.replace(/^ALSA: /, '');
-                    html += `<div class="status-item"><span class="status-label">Audio Input:</span> <span class="status-value">${escapeHtml(deviceName)}</span></div>`;
+                    const isPulse = deviceName.toLowerCase() === 'pulse';
+                    html += `<div class="status-item"><span class="status-label">LedFX Audio Input:</span> ${formatStatus(isPulse, 'Pulse', escapeHtml(deviceName))}</div>`;
                 }
                 html += '</div>';
                 html += '</section>';
