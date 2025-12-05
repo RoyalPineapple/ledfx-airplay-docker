@@ -988,6 +988,11 @@ function parse_args() {
 # Main installation flow
 function main() {
     parse_args "$@"
+    
+    # Update REPO_RAW_URL to use the specified branch (after parsing args)
+    REPO_RAW_URL="$(get_raw_url "${BRANCH}")"
+    msg_info "Using branch: ${BRANCH}"
+    msg_info "Repository URL: ${REPO_RAW_URL}"
 
     if [[ "${DRY_RUN}" == true ]]; then
         msg_info "Running in DRY RUN mode - no changes will be made"
