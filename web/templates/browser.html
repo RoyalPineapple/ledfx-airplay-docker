@@ -29,7 +29,7 @@
                 <input type="checkbox" id="auto-refresh-toggle" class="checkbox-input" checked>
                 <span class="checkbox-text">Auto-refresh</span>
             </label>
-            <button id="refresh-btn" class="btn btn-primary" title="Refresh browser">
+            <button type="button" id="refresh-btn" class="btn btn-primary" title="Refresh browser">
                 <span id="refresh-icon">🔄</span> Refresh
             </button>
             <div id="last-update" class="last-update"></div>
@@ -193,9 +193,27 @@
             `;
         }
 
+        // Track expanded rows by device identifier (hostname or name)
+        let expandedDevices = new Set();
+
         function renderDevices(containerId, devices, emptyId) {
             const container = document.getElementById(containerId);
             const empty = document.getElementById(emptyId);
+            
+            // Save currently expanded devices before clearing (by hostname or name)
+            const currentlyExpanded = new Set();
+            document.querySelectorAll('.device-row.expanded').forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 3) {
+                    // Get hostname (3rd cell) or device name (1st cell) as identifier
+                    const hostname = cells[2]?.textContent?.trim();
+                    const deviceName = cells[0]?.textContent?.replace(/[▶▼]/g, '').trim();
+                    const identifier = (hostname && hostname !== '—') ? hostname : deviceName;
+                    if (identifier) {
+                        currentlyExpanded.add(identifier);
+                    }
+                }
+            });
             
             container.innerHTML = '';
             container.style.display = 'none';
@@ -227,10 +245,20 @@
                 container.innerHTML = tableHtml;
                 container.style.display = 'block';
                 
-                // Attach click handlers for expandable rows
+                // Attach click handlers for expandable rows and restore expanded state
                 document.querySelectorAll('.device-row.expandable').forEach(row => {
-                    row.addEventListener('click', function() {
-                        const deviceId = this.dataset.deviceId;
+                    const deviceId = row.dataset.deviceId;
+                    const cells = row.querySelectorAll('td');
+                    const hostname = cells[2]?.textContent?.trim();
+                    const deviceName = cells[0]?.textContent?.replace(/[▶▼]/g, '').trim();
+                    const identifier = (hostname && hostname !== '—') ? hostname : deviceName;
+                    
+                    // Check if this device should be expanded
+                    const shouldExpand = currentlyExpanded.has(identifier) || expandedDevices.has(identifier);
+                    
+                    row.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
                         const detailRow = document.getElementById(`${deviceId}-detail`);
                         const expandIcon = this.querySelector('.expand-icon');
                         
@@ -239,13 +267,26 @@
                                 detailRow.style.display = '';
                                 if (expandIcon) expandIcon.textContent = '▼';
                                 this.classList.add('expanded');
+                                expandedDevices.add(identifier);
                             } else {
                                 detailRow.style.display = 'none';
                                 if (expandIcon) expandIcon.textContent = '▶';
                                 this.classList.remove('expanded');
+                                expandedDevices.delete(identifier);
                             }
                         }
                     });
+                    
+                    // Restore expanded state if it was expanded before
+                    if (shouldExpand) {
+                        const detailRow = document.getElementById(`${deviceId}-detail`);
+                        const expandIcon = row.querySelector('.expand-icon');
+                        if (detailRow) {
+                            detailRow.style.display = '';
+                            if (expandIcon) expandIcon.textContent = '▼';
+                            row.classList.add('expanded');
+                        }
+                    }
                 });
             } else {
                 empty.style.display = 'block';
@@ -325,7 +366,9 @@
         // Refresh button handler
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
+            refreshBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 refreshBrowser();
             });
         }
