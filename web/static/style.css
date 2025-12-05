@@ -147,6 +147,9 @@ nav a {
     padding: 0.5rem 1rem;
     border-radius: var(--border-radius);
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 nav a:hover {
@@ -156,6 +159,33 @@ nav a:hover {
 nav a.active {
     background-color: var(--color-primary);
     color: white;
+}
+
+nav a .nav-icon {
+    font-size: 1.3rem;
+    width: 1.3rem;
+    height: 1.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: middle;
+    font-weight: normal;
+    font-style: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'liga';
+}
+
+nav a .nav-icon {
+    font-size: 1.2rem;
+    vertical-align: middle;
 }
 
 .status-section {
