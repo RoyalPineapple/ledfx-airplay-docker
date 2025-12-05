@@ -796,9 +796,14 @@ function start_stack() {
         fi
         
         # Always rebuild web container to ensure latest code is included
+        # Use --no-cache to avoid Docker build cache issues
         msg_info "Rebuilding web container to ensure latest code..."
-        docker compose build airglow-web || {
-            msg_warn "Failed to rebuild web container, continuing with existing image"
+        docker compose build --no-cache airglow-web || {
+            msg_warn "Failed to rebuild web container, trying with cache..."
+            # Fallback: try with cache if --no-cache fails
+            docker compose build airglow-web || {
+                msg_warn "Failed to rebuild web container, continuing with existing image"
+            }
         }
         docker compose up -d --build || {
             msg_error "Failed to start Docker stack"
@@ -818,9 +823,14 @@ function start_stack() {
     else
         msg_info "Starting services..."
         # Always rebuild web container to ensure latest code is included
+        # Use --no-cache to avoid Docker build cache issues
         msg_info "Rebuilding web container to ensure latest code..."
-        docker compose build airglow-web || {
-            msg_warn "Failed to rebuild web container, continuing with existing image"
+        docker compose build --no-cache airglow-web || {
+            msg_warn "Failed to rebuild web container, trying with cache..."
+            # Fallback: try with cache if --no-cache fails
+            docker compose build airglow-web || {
+                msg_warn "Failed to rebuild web container, continuing with existing image"
+            }
         }
         docker compose up -d || {
             msg_error "Failed to start Docker stack"
