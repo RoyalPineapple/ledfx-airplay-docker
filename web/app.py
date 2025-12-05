@@ -1179,17 +1179,25 @@ def parse_avahi_browse_output(output):
                     if ft_match:
                         feature_flags = ft_match.group(1)
                 
-                # Use hostname as key to consolidate (same device may appear on multiple interfaces)
+                # Use hostname + service type as key to differentiate AirPlay 1, AirPlay 2, and video
+                # This allows same hostname to show separate entries for different service types
                 if hostname:
-                    device_key = hostname.lower()
+                    device_key = f"{hostname.lower()}|{service_type.lower()}"
                 else:
-                    # No hostname - use device name as fallback key
-                    device_key = device_name.lower()
+                    # No hostname - use device name + service type as fallback key
+                    device_key = f"{device_name.lower()}|{service_type.lower()}"
+                
+                # Determine service type label for display
+                service_label = ''
+                if '_raop._tcp' in service_type.lower():
+                    service_label = ' (AirPlay 2 Audio)'
+                elif '_airplay._tcp' in service_type.lower():
+                    service_label = ' (AirPlay Video)'
                 
                 # Initialize device entry if not exists
                 if device_key not in device_map:
                     device_map[device_key] = {
-                        'name': device_name,
+                        'name': device_name + service_label,
                         'interface': interface,
                         'protocol': protocol,
                         'hostname': hostname,
@@ -1197,6 +1205,7 @@ def parse_avahi_browse_output(output):
                         'port': port,
                         'firmware_version': firmware_version,
                         'feature_flags': feature_flags,
+                        'service_type': service_type,
                         'raw_avahi_data': []
                     }
                 
@@ -1273,11 +1282,7 @@ def get_airplay_devices():
         result['error'] = 'Shairport-sync container is not running'
         return jsonify(result)
     
-    # Combined device map keyed by hostname
-    all_devices = {}
-    
-    # Browse AirPlay 2 services (_raop._tcp)
-    # Use -p for parsable output and -r for resolve
+    # Browse AirPlay 2 services (_raop._tcp) - Audio
     try:
         airplay2_result = subprocess.run(
             ['docker', 'exec', 'shairport-sync', 'avahi-browse', '-rpt', '_raop._tcp'],
@@ -1287,19 +1292,11 @@ def get_airplay_devices():
         )
         if airplay2_result.returncode == 0:
             airplay2_devices = parse_avahi_browse_output(airplay2_result.stdout)
-            # Mark devices as supporting AirPlay 2
+            # Each device from parse_avahi_browse_output is already differentiated by service type
             for device in airplay2_devices:
-                hostname_key = device.get('hostname', '').lower() if device.get('hostname') else device.get('name', '').lower()
-                if hostname_key:
-                    if hostname_key not in all_devices:
-                        all_devices[hostname_key] = device
-                        all_devices[hostname_key]['raw_avahi_data_ap2'] = device.get('raw_avahi_data', [])
-                    all_devices[hostname_key]['airplay2'] = True
-                    # Merge raw data if device already exists
-                    if 'raw_avahi_data_ap2' not in all_devices[hostname_key]:
-                        all_devices[hostname_key]['raw_avahi_data_ap2'] = device.get('raw_avahi_data', [])
-                    else:
-                        all_devices[hostname_key]['raw_avahi_data_ap2'].extend(device.get('raw_avahi_data', []))
+                device['airplay2'] = True
+                device['airplay_versions'] = 'AirPlay 2'
+                result['devices'].append(device)
         else:
             logger.warning(f"AirPlay 2 browse failed: {airplay2_result.stderr}")
     except subprocess.TimeoutExpired:
@@ -1307,8 +1304,7 @@ def get_airplay_devices():
     except Exception as e:
         logger.error(f"Error browsing AirPlay 2 services: {e}")
     
-    # Browse AirPlay 1 services (_airplay._tcp)
-    # Use -p for parsable output and -r for resolve
+    # Browse AirPlay 1 services (_airplay._tcp) - Video
     try:
         airplay1_result = subprocess.run(
             ['docker', 'exec', 'shairport-sync', 'avahi-browse', '-rpt', '_airplay._tcp'],
@@ -1318,42 +1314,17 @@ def get_airplay_devices():
         )
         if airplay1_result.returncode == 0:
             airplay1_devices = parse_avahi_browse_output(airplay1_result.stdout)
-            # Mark devices as supporting AirPlay 1
+            # Each device from parse_avahi_browse_output is already differentiated by service type
             for device in airplay1_devices:
-                hostname_key = device.get('hostname', '').lower() if device.get('hostname') else device.get('name', '').lower()
-                if hostname_key:
-                    if hostname_key not in all_devices:
-                        all_devices[hostname_key] = device
-                        all_devices[hostname_key]['raw_avahi_data_ap1'] = device.get('raw_avahi_data', [])
-                    all_devices[hostname_key]['airplay1'] = True
-                    # Merge raw data if device already exists
-                    if 'raw_avahi_data_ap1' not in all_devices[hostname_key]:
-                        all_devices[hostname_key]['raw_avahi_data_ap1'] = device.get('raw_avahi_data', [])
-                    else:
-                        all_devices[hostname_key]['raw_avahi_data_ap1'].extend(device.get('raw_avahi_data', []))
+                device['airplay1'] = True
+                device['airplay_versions'] = 'AirPlay Video'
+                result['devices'].append(device)
         else:
             logger.warning(f"AirPlay 1 browse failed: {airplay1_result.stderr}")
     except subprocess.TimeoutExpired:
         logger.warning("AirPlay 1 browse timed out")
     except Exception as e:
         logger.error(f"Error browsing AirPlay 1 services: {e}")
-    
-    # Convert to list and format AirPlay version info
-    for device in all_devices.values():
-        versions = []
-        if device.get('airplay2'):
-            versions.append('AirPlay 2')
-        if device.get('airplay1'):
-            versions.append('AirPlay 1')
-        device['airplay_versions'] = ', '.join(versions) if versions else 'Unknown'
-        # Combine all raw avahi data
-        raw_data = []
-        if device.get('raw_avahi_data_ap2'):
-            raw_data.extend(device['raw_avahi_data_ap2'])
-        if device.get('raw_avahi_data_ap1'):
-            raw_data.extend(device['raw_avahi_data_ap1'])
-        device['raw_avahi_data'] = raw_data
-        result['devices'].append(device)
     
     return jsonify(result)
 
