@@ -453,6 +453,7 @@ def get_airplay_status():
         'advertising': False,
         'running': False,
         'avahi_running': False,  # Now same as shairport-sync running (built-in Avahi)
+        'dbus_connected': False,
         'error': None
     }
     
