@@ -7,40 +7,27 @@
 # - airglow-web: Bridge networking (port 8080 exposed)
 # - ledfx: Bridge networking (ports 8888, 5568, 6454, 21324, 4048, 8889, 4002, 4003 exposed)
 #   Note: Philips Hue uses outbound HTTP/HTTPS (80/443) - no ports exposed
-# - avahi: Host networking (handles mDNS/Bonjour on physical network with reflector enabled)
-# - shairport-sync: Bridge networking (connects to Avahi via D-Bus, ports 7000, 5000 exposed)
-# Note: All services now use bridge networking except Avahi, which requires host networking
-# for mDNS/Bonjour discovery on the physical network. Avahi reflector is enabled
-# to forward mDNS traffic between network interfaces. NQPTP and shairport-sync communicate via
-# shared memory (/dev/shm) for AirPlay 2 timing synchronization (provided by shairport-sync's internal nqptp).
+# - shairport-sync: Macvlan networking (real IP 192.168.2.202 on physical network)
+#   Uses built-in Avahi daemon (included in mikebrady/shairport-sync image) for mDNS advertisement
+#   Also connected to bridge network to reach LedFX container
+# Note: All services use bridge networking except shairport-sync, which uses macvlan to get
+# a real IP on the physical network. This allows it to advertise correctly via its built-in Avahi.
+# NQPTP and shairport-sync communicate via shared memory (/dev/shm) for AirPlay 2 timing
+# synchronization (provided by shairport-sync's internal nqptp).
 
 networks:
   airglow-network:
     driver: bridge
+  shairport-macvlan:
+    driver: macvlan
+    driver_opts:
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 192.168.2.0/24
+          gateway: 192.168.2.1
 
 services:
-  avahi:
-    # Avahi - mDNS/Bonjour service for AirPlay discovery
-    # Runs on host networking to access physical network for mDNS
-    # Reflector mode enabled to forward mDNS traffic between interfaces
-    build:
-      context: .
-      dockerfile: Dockerfile.avahi
-    container_name: avahi
-    network_mode: host
-    
-    volumes:
-      # Avahi configuration with reflector enabled
-      - ./configs/avahi-daemon.conf:/etc/avahi/avahi-daemon.conf:ro
-      # D-Bus socket directory (Avahi will create its own D-Bus daemon here)
-      # Shared with shairport-sync (bridge networking) via bind mount
-      - ./runtime/dbus:/var/run/dbus:rw
-      # Shared directory for Avahi to write host IP (Avahi runs on host networking, so it can detect it)
-      - ./runtime:/var/run/avahi-daemon:rw
-    
-    restart: unless-stopped
-
-
   ledfx:
     # LedFX - Real-time LED visualization from audio input
     # Web UI: http://localhost:8888
@@ -108,24 +95,26 @@ services:
     # Shairport-Sync - AirPlay 2 receiver
     # Receives AirPlay audio and outputs to PulseAudio
     # Custom image includes jq for JSON parsing in hook scripts
-    # Now on bridge networking, connects to Avahi via D-Bus for mDNS
+    # Uses macvlan networking to get real IP (192.168.2.202) on physical network
+    # This ensures it advertises the correct IP instead of bridge IP
     build:
       context: .
       dockerfile: Dockerfile.shairport-sync
     container_name: shairport-sync
     
-    # Use the startup script from the Dockerfile which handles HOST_IP configuration
-    # The startup script waits for D-Bus and configures the host IP for mDNS advertisement
-
-    # Bridge networking - connect to Avahi via D-Bus
+    # Macvlan networking - gives container real IP on physical network
+    # This allows shairport-sync to advertise the correct IP (192.168.2.202)
+    # and clients can connect directly without Docker port mapping
     networks:
-      - airglow-network
+      shairport-macvlan:
+        ipv4_address: 192.168.2.202
+      # Also connect to bridge network to reach LedFX container
+      airglow-network:
+        aliases:
+          - shairport-sync
 
-    ports:
-      - "7000:7000"      # AirPlay control (TCP)
-      - "5000:5000"      # AirPlay audio (TCP)
-      - "5000:5000/udp"  # AirPlay audio (UDP)
-      # Note: NQPTP ports (319, 320/UDP) are handled by shairport-sync's internal nqptp process
+    # No port mappings needed - macvlan gives direct network access
+    # Ports 7000 (RTSP), 5000 (RAOP), 319/320 (NQPTP) are directly accessible
 
     environment:
       # Connect to LedFX's PulseAudio server via shared Unix socket
@@ -136,30 +125,20 @@ services:
       - LEDFX_PORT=8888
       # Optional log location for the session hook prototype
       - LEDFX_HOOK_LOG=/var/log/shairport-sync/ledfx-session-hook.log
-      # D-Bus connection to Avahi container
-      - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
-
     volumes:
       # Shairport configuration (AirPlay device name, audio settings)
-      # Mounted as read-write so startup script can dynamically set host IP
-      - ./configs/shairport-sync.conf:/etc/shairport-sync.conf:rw
+      - ./configs/shairport-sync.conf:/etc/shairport-sync.conf:ro
       # LedFX hook configuration (YAML format, created dynamically by web app, read by hook scripts)
       - ./configs:/configs:ro
       # PulseAudio socket for audio output to LedFX
       - ./pulse:/pulse
       # Session hook scripts triggered on AirPlay start/stop
       - ./scripts:/scripts:ro
-      # D-Bus socket from Avahi container (shared via bind mount)
-      # Avahi creates D-Bus daemon, shairport-sync on bridge networking accesses it via this mount
-      - ./runtime/dbus:/var/run/dbus:ro
       # Shared memory for shairport-sync's internal nqptp process
       - /dev/shm:/dev/shm
-      # Shared directory to read host IP from Avahi (Avahi writes it on startup)
-      - ./runtime:/var/run/avahi-daemon:ro
 
-    # Ensure Avahi and LedFX start first
+    # Ensure LedFX starts first
     depends_on:
-      - avahi
       - ledfx
 
     restart: unless-stopped

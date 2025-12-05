@@ -5,44 +5,7 @@ FROM mikebrady/shairport-sync:latest
 # Install jq for JSON parsing and yq for YAML parsing in hook scripts
 RUN apk add --no-cache jq yq perl
 
-# Create startup script - connect to external Avahi via D-Bus
-# Avahi already advertises the host IP, so we just wait for D-Bus readiness
-RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
-    echo '# Wait for D-Bus socket from Avahi container' >> /usr/local/bin/start.sh && \
-    echo 'while [ ! -S /var/run/dbus/system_bus_socket ]; do' >> /usr/local/bin/start.sh && \
-    echo '  echo "Waiting for D-Bus socket from Avahi container..."' >> /usr/local/bin/start.sh && \
-    echo '  sleep 1' >> /usr/local/bin/start.sh && \
-    echo 'done' >> /usr/local/bin/start.sh && \
-    echo '# Wait for Avahi service to appear on D-Bus' >> /usr/local/bin/start.sh && \
-    echo 'for i in $(seq 1 15); do' >> /usr/local/bin/start.sh && \
-    echo '  if timeout 2 dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>/dev/null | grep -q \"org.freedesktop.Avahi\"; then' >> /usr/local/bin/start.sh && \
-    echo '    echo \"Avahi service detected on D-Bus\"' >> /usr/local/bin/start.sh && \
-    echo '    break' >> /usr/local/bin/start.sh && \
-    echo '  fi' >> /usr/local/bin/start.sh && \
-    echo '  echo \"Waiting for Avahi service on D-Bus...\"' >> /usr/local/bin/start.sh && \
-    echo '  sleep 1' >> /usr/local/bin/start.sh && \
-    echo 'done' >> /usr/local/bin/start.sh && \
-    echo 'if [ -f /var/run/avahi-daemon/host-ip.txt ]; then' >> /usr/local/bin/start.sh && \
-    echo '  HOST_IP=$(cat /var/run/avahi-daemon/host-ip.txt 2>/dev/null | tr -d '"'"' \n'"'"')' >> /usr/local/bin/start.sh && \
-    echo '  if [ -n "$HOST_IP" ] && [ "$HOST_IP" != "127.0.0.1" ]; then' >> /usr/local/bin/start.sh && \
-    echo '    echo "Avahi reports host IP: $HOST_IP"' >> /usr/local/bin/start.sh && \
-    echo '    # Set interfaces in shairport-sync.conf to advertise host IP (not bridge IP)' >> /usr/local/bin/start.sh && \
-    echo '    # This allows clients on physical network to connect to shairport-sync on bridge networking' >> /usr/local/bin/start.sh && \
-    echo '    if ! grep -q "^[[:space:]]*interfaces[[:space:]]*=" /etc/shairport-sync.conf; then' >> /usr/local/bin/start.sh && \
-    echo '      # Add interfaces setting after general = {' >> /usr/local/bin/start.sh && \
-    echo '      # Insert interfaces setting after opening brace (line 9 in standard config)' >> /usr/local/bin/start.sh && \
-    echo '      head -n 9 /etc/shairport-sync.conf > /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
-    echo '      printf "        interfaces = \"$HOST_IP\";\\n" >> /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
-    echo '      tail -n +10 /etc/shairport-sync.conf >> /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
-    echo '      cat /tmp/shairport-sync.conf.tmp > /etc/shairport-sync.conf && rm /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
-    echo '    else' >> /usr/local/bin/start.sh && \
-    echo '      # Update existing interfaces setting' >> /usr/local/bin/start.sh && \
-    echo '      sed "s|^[[:space:]]*interfaces[[:space:]]*=.*|        interfaces = \"$HOST_IP\";|" /etc/shairport-sync.conf > /tmp/shairport-sync.conf.tmp && cat /tmp/shairport-sync.conf.tmp > /etc/shairport-sync.conf && rm /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
-    echo '    fi' >> /usr/local/bin/start.sh && \
-    echo '  fi' >> /usr/local/bin/start.sh && \
-    echo 'fi' >> /usr/local/bin/start.sh && \
-    echo 'exec shairport-sync "$@"' >> /usr/local/bin/start.sh && \
-    chmod +x /usr/local/bin/start.sh
-
-# Override entrypoint to use our custom startup script
-ENTRYPOINT ["/usr/local/bin/start.sh"]
+# The pre-built mikebrady/shairport-sync:latest image includes its own Avahi daemon
+# With macvlan networking, shairport-sync has a real IP (192.168.2.202) on the physical network
+# The built-in Avahi daemon will automatically advertise on the correct interface
+# No custom entrypoint needed - use the default from the base image
