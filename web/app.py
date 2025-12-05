@@ -698,7 +698,7 @@ def browser():
 
 @app.route('/ledfx')
 def ledfx():
-    """LedFX interface page"""
+    """LedFX page"""
     return render_template('ledfx.html')
 
 
