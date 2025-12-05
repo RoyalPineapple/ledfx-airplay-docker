@@ -87,8 +87,12 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^shairport-sync$'; then
     if docker_cmd exec shairport-sync test -S /var/run/dbus/system_bus_socket 2>/dev/null; then
         check_ok "D-Bus socket accessible"
         # Check if shairport-sync's built-in Avahi is accessible via D-Bus
-        # Use timeout to prevent hanging - need to call docker_cmd properly
-        DBUS_OUTPUT=$(timeout 5 bash -c "docker_cmd exec shairport-sync dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1" || echo "")
+        # Use timeout to prevent hanging - call docker_cmd directly (it's a function from diagnose-common.sh)
+        if [ "${REMOTE:-false}" = true ]; then
+            DBUS_OUTPUT=$(timeout 5 $SSH_CMD "docker exec shairport-sync dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1" || echo "")
+        else
+            DBUS_OUTPUT=$(timeout 5 docker exec shairport-sync dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>&1 || echo "")
+        fi
         if echo "$DBUS_OUTPUT" | grep -q 'org.freedesktop.Avahi' 2>/dev/null; then
             check_ok "Built-in Avahi daemon is running (D-Bus connection active)"
         else
