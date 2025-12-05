@@ -277,7 +277,7 @@
                 }
                 html += `<div class="status-item"><span class="status-label">Service Running:</span> ${formatStatus(airplay.running, 'Running', 'Stopped')}</div>`;
                 html += `<div class="status-item"><span class="status-label">Avahi Running:</span> ${formatStatus(airplay.avahi_running, 'Running', 'Stopped')}</div>`;
-                html += `<div class="status-item"><span class="status-label">D-Bus Connected:</span> ${formatStatus(airplay.d_bus_connected, 'Connected', 'Disconnected')}${!airplay.d_bus_connected && airplay.running && airplay.avahi_running ? ' <span class="status-hint">(shairport-sync cannot reach Avahi)</span>' : ''}</div>`;
+                html += `<div class="status-item"><span class="status-label">D-Bus Connected:</span> ${formatStatus(airplay.dbus_connected, 'Connected', 'Disconnected')}${!airplay.dbus_connected && airplay.running && airplay.avahi_running ? ' <span class="status-hint">(built-in Avahi not accessible via D-Bus)</span>' : ''}</div>`;
                 html += `<div class="status-item"><span class="status-label">Advertising on Network:</span> ${formatStatus(airplay.advertising, 'Yes', 'No')}${!airplay.advertising && airplay.running && airplay.avahi_running ? ' <span class="status-hint">(device not found in network)</span>' : ''}</div>`;
                 if (airplay.error) {
                     html += `<div class="status-item"><span class="status-label">Status:</span> <span class="status-value" style="color: var(--color-warning);">${escapeHtml(airplay.error)}</span></div>`;
