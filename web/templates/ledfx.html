@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirGlow - LedFX Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="banner-container">
+        <img src="https://raw.githubusercontent.com/RoyalPineapple/airglow/master/web/static/banner.jpg" alt="Aurora Borealis" class="banner-image" onerror="this.parentElement.style.display='none'">
+        <div class="banner-overlay">
+            <h1 class="banner-title">AirGlow</h1>
+            <p class="banner-tagline">LedFX Interface</p>
+        </div>
+    </div>
+    <div class="container">
+        <header>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/status">Status Dashboard</a>
+                <a href="/config">Configuration</a>
+                <a href="/browser">AirPlay Browser</a>
+                <a href="/ledfx" class="active">LedFX Interface</a>
+            </nav>
+        </header>
+
+        <div class="ledfx-iframe-container">
+            <iframe id="ledfx-iframe" src="http://{{ request.host.split(':')[0] }}:8888" frameborder="0" allowfullscreen></iframe>
+        </div>
+    </div>
+</body>
+</html>
+

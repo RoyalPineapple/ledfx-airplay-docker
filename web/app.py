@@ -696,6 +696,12 @@ def browser():
     return render_template('browser.html')
 
 
+@app.route('/ledfx')
+def ledfx():
+    """LedFX interface page"""
+    return render_template('ledfx.html')
+
+
 def get_diagnostic_warnings():
     """Run a quick diagnostic check and return warning/error counts"""
     warnings = 0
