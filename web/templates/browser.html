@@ -230,32 +230,179 @@
 
         // Track expanded rows by device identifier (hostname or name)
         let expandedDevices = new Set();
+        let previousDevices = [];
+        let deviceRowMap = new Map(); // Map of device key -> row element
+
+        function getDeviceKey(device) {
+            return (device.hostname && device.hostname !== '—') ? device.hostname.toLowerCase() : device.name.toLowerCase();
+        }
+
+        function updateDeviceRow(row, device, deviceId) {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 7) return;
+            
+            const hasRawData = device.raw_avahi_data && device.raw_avahi_data.length > 0;
+            const expandIcon = row.querySelector('.expand-icon');
+            
+            // Update name cell
+            const nameCell = cells[0];
+            const newName = escapeHtml(device.name);
+            if (nameCell.textContent.replace(/[▶▼]/g, '').trim() !== device.name) {
+                nameCell.innerHTML = (hasRawData ? '<span class="expand-icon">▶</span> ' : '') + newName;
+            }
+            
+            // Update other cells only if changed
+            const updates = [
+                { cell: cells[1], value: device.address_display || device.address || '—', isHtml: false },
+                { cell: cells[2], value: device.hostname || '—', isHtml: false },
+                { cell: cells[3], value: device.port || '—', isHtml: false },
+                { cell: cells[4], value: device.airplay_versions || '—', isHtml: false },
+                { cell: cells[5], value: device.firmware_version || '—', isHtml: false },
+                { cell: cells[6], value: device.feature_flags ? `<code>${escapeHtml(device.feature_flags)}</code>` : '—', isHtml: true }
+            ];
+            
+            updates.forEach(({ cell, value, isHtml }) => {
+                const currentText = cell.textContent.trim();
+                const newText = isHtml ? value.replace(/<[^>]*>/g, '').trim() : value.trim();
+                if (currentText !== newText) {
+                    cell.innerHTML = isHtml ? value : escapeHtml(value);
+                }
+            });
+            
+            // Update expandable class
+            if (hasRawData && !row.classList.contains('expandable')) {
+                row.classList.add('expandable');
+                row.style.cursor = 'pointer';
+            } else if (!hasRawData && row.classList.contains('expandable')) {
+                row.classList.remove('expandable');
+                row.style.cursor = '';
+            }
+            
+            // Update detail row if it exists
+            const detailRow = document.getElementById(`${deviceId}-detail`);
+            if (hasRawData && detailRow) {
+                const dataContainer = detailRow.querySelector('.avahi-data-container');
+                const rawText = detailRow.querySelector('.raw-avahi-data');
+                if (dataContainer) {
+                    dataContainer.innerHTML = formatAvahiData(device.raw_avahi_data);
+                }
+                if (rawText) {
+                    rawText.textContent = device.raw_avahi_data.join('\n');
+                }
+            }
+        }
+
+        function createDeviceRow(device, index, tbody) {
+            const deviceId = `device-${index}`;
+            const hasRawData = device.raw_avahi_data && device.raw_avahi_data.length > 0;
+            const deviceKey = getDeviceKey(device);
+            
+            const row = document.createElement('tr');
+            row.className = `device-row ${hasRawData ? 'expandable' : ''}`;
+            row.dataset.deviceId = deviceId;
+            if (hasRawData) row.style.cursor = 'pointer';
+            
+            row.innerHTML = `
+                <td class="device-name">
+                    ${hasRawData ? '<span class="expand-icon">▶</span> ' : ''}
+                    ${escapeHtml(device.name)}
+                </td>
+                <td class="device-address">${device.address_display ? escapeHtml(device.address_display) : (device.address ? escapeHtml(device.address) : '—')}</td>
+                <td class="device-hostname">${device.hostname ? escapeHtml(device.hostname) : '—'}</td>
+                <td class="device-port">${device.port ? escapeHtml(device.port) : '—'}</td>
+                <td class="device-versions">${device.airplay_versions ? escapeHtml(device.airplay_versions) : '—'}</td>
+                <td class="device-firmware">${device.firmware_version ? escapeHtml(device.firmware_version) : '—'}</td>
+                <td class="device-features">${device.feature_flags ? `<code>${escapeHtml(device.feature_flags)}</code>` : '—'}</td>
+            `;
+            
+            tbody.appendChild(row);
+            
+            // Add detail row if has raw data
+            if (hasRawData) {
+                const detailRow = document.createElement('tr');
+                detailRow.className = 'device-detail-row';
+                detailRow.id = `${deviceId}-detail`;
+                detailRow.style.display = 'none';
+                detailRow.innerHTML = `
+                    <td colspan="7" class="device-detail-cell">
+                        <div class="device-detail-content">
+                            <h4>Raw Avahi Data</h4>
+                            <div class="avahi-data-container">
+                                ${formatAvahiData(device.raw_avahi_data)}
+                            </div>
+                            <details class="raw-data-toggle">
+                                <summary>Show Raw Text</summary>
+                                <pre class="raw-avahi-data">${escapeHtml(device.raw_avahi_data.join('\n'))}</pre>
+                            </details>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(detailRow);
+            }
+            
+            // Attach click handler
+            if (hasRawData) {
+                row.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const detailRow = document.getElementById(`${deviceId}-detail`);
+                    const expandIcon = this.querySelector('.expand-icon');
+                    
+                    if (detailRow) {
+                        if (detailRow.style.display === 'none') {
+                            detailRow.style.display = '';
+                            if (expandIcon) expandIcon.textContent = '▼';
+                            this.classList.add('expanded');
+                            expandedDevices.add(deviceKey);
+                        } else {
+                            detailRow.style.display = 'none';
+                            if (expandIcon) expandIcon.textContent = '▶';
+                            this.classList.remove('expanded');
+                            expandedDevices.delete(deviceKey);
+                        }
+                    }
+                });
+            }
+            
+            // Restore expanded state
+            if (expandedDevices.has(deviceKey) && hasRawData) {
+                const detailRow = document.getElementById(`${deviceId}-detail`);
+                const expandIcon = row.querySelector('.expand-icon');
+                if (detailRow) {
+                    detailRow.style.display = '';
+                    if (expandIcon) expandIcon.textContent = '▼';
+                    row.classList.add('expanded');
+                }
+            }
+            
+            deviceRowMap.set(deviceKey, { row, deviceId, index });
+            return row;
+        }
 
         function renderDevices(containerId, devices, emptyId) {
             const container = document.getElementById(containerId);
             const empty = document.getElementById(emptyId);
             
-            // Save currently expanded devices before clearing (by hostname or name)
-            const currentlyExpanded = new Set();
-            document.querySelectorAll('.device-row.expanded').forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 3) {
-                    // Get hostname (3rd cell) or device name (1st cell) as identifier
-                    const hostname = cells[2]?.textContent?.trim();
-                    const deviceName = cells[0]?.textContent?.replace(/[▶▼]/g, '').trim();
-                    const identifier = (hostname && hostname !== '—') ? hostname : deviceName;
-                    if (identifier) {
-                        currentlyExpanded.add(identifier);
-                    }
-                }
-            });
+            if (!devices || devices.length === 0) {
+                // Hide table, show empty
+                const table = container.querySelector('table');
+                if (table) table.style.display = 'none';
+                empty.style.display = 'block';
+                previousDevices = [];
+                deviceRowMap.clear();
+                return;
+            }
             
-            container.innerHTML = '';
-            container.style.display = 'none';
+            // Hide empty, show table
             empty.style.display = 'none';
             
-            if (devices && devices.length > 0) {
-                let tableHtml = `
+            // Get or create table
+            let table = container.querySelector('table');
+            let tbody;
+            
+            if (!table) {
+                // First render - create table
+                container.innerHTML = `
                     <table class="devices-table">
                         <thead>
                             <tr>
@@ -268,64 +415,81 @@
                                 <th>Features</th>
                             </tr>
                         </thead>
-                        <tbody>
-                `;
-                devices.forEach((device, index) => {
-                    tableHtml += renderDeviceRow(device, index);
-                });
-                tableHtml += `
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 `;
-                container.innerHTML = tableHtml;
+                table = container.querySelector('table');
                 container.style.display = 'block';
-                
-                // Attach click handlers for expandable rows and restore expanded state
-                document.querySelectorAll('.device-row.expandable').forEach(row => {
-                    const deviceId = row.dataset.deviceId;
-                    const cells = row.querySelectorAll('td');
-                    const hostname = cells[2]?.textContent?.trim();
-                    const deviceName = cells[0]?.textContent?.replace(/[▶▼]/g, '').trim();
-                    const identifier = (hostname && hostname !== '—') ? hostname : deviceName;
-                    
-                    // Check if this device should be expanded
-                    const shouldExpand = currentlyExpanded.has(identifier) || expandedDevices.has(identifier);
-                    
-                    row.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const detailRow = document.getElementById(`${deviceId}-detail`);
-                        const expandIcon = this.querySelector('.expand-icon');
-                        
-                        if (detailRow) {
-                            if (detailRow.style.display === 'none') {
-                                detailRow.style.display = '';
-                                if (expandIcon) expandIcon.textContent = '▼';
-                                this.classList.add('expanded');
-                                expandedDevices.add(identifier);
-                            } else {
-                                detailRow.style.display = 'none';
-                                if (expandIcon) expandIcon.textContent = '▶';
-                                this.classList.remove('expanded');
-                                expandedDevices.delete(identifier);
-                            }
-                        }
-                    });
-                    
-                    // Restore expanded state if it was expanded before
-                    if (shouldExpand) {
-                        const detailRow = document.getElementById(`${deviceId}-detail`);
-                        const expandIcon = row.querySelector('.expand-icon');
-                        if (detailRow) {
-                            detailRow.style.display = '';
-                            if (expandIcon) expandIcon.textContent = '▼';
-                            row.classList.add('expanded');
-                        }
-                    }
-                });
-            } else {
-                empty.style.display = 'block';
             }
+            
+            tbody = table.querySelector('tbody');
+            
+            // Create maps for comparison
+            const newDeviceMap = new Map();
+            devices.forEach((device, index) => {
+                const key = getDeviceKey(device);
+                newDeviceMap.set(key, { device, index });
+            });
+            
+            // Remove devices that no longer exist
+            const keysToRemove = [];
+            deviceRowMap.forEach((value, key) => {
+                if (!newDeviceMap.has(key)) {
+                    keysToRemove.push(key);
+                }
+            });
+            
+            keysToRemove.forEach(key => {
+                const { row, deviceId } = deviceRowMap.get(key);
+                const detailRow = document.getElementById(`${deviceId}-detail`);
+                if (detailRow) detailRow.remove();
+                row.remove();
+                deviceRowMap.delete(key);
+                expandedDevices.delete(key);
+            });
+            
+            // Update existing or add new devices
+            devices.forEach((device, index) => {
+                const key = getDeviceKey(device);
+                const existing = deviceRowMap.get(key);
+                
+                if (existing) {
+                    // Update existing row
+                    updateDeviceRow(existing.row, device, existing.deviceId);
+                    // Update index in case order changed
+                    existing.index = index;
+                } else {
+                    // Add new row
+                    createDeviceRow(device, index, tbody);
+                }
+            });
+            
+            // Reorder rows to match device order (if needed)
+            const rows = Array.from(tbody.querySelectorAll('.device-row'));
+            const orderedRows = [];
+            devices.forEach((device, index) => {
+                const key = getDeviceKey(device);
+                const existing = deviceRowMap.get(key);
+                if (existing) {
+                    orderedRows.push(existing.row);
+                    const detailRow = document.getElementById(`${existing.deviceId}-detail`);
+                    if (detailRow) orderedRows.push(detailRow);
+                }
+            });
+            
+            // Only reorder if order changed
+            let orderChanged = false;
+            orderedRows.forEach((row, i) => {
+                if (rows[i] !== row) {
+                    orderChanged = true;
+                }
+            });
+            
+            if (orderChanged) {
+                orderedRows.forEach(row => tbody.appendChild(row));
+            }
+            
+            previousDevices = devices;
         }
 
         let isRefreshing = false;
@@ -338,15 +502,21 @@
             
             isRefreshing = true;
             
-            // Show loading states
+            // Show loading states (but don't hide table - we'll update it in place)
             const devicesLoading = document.getElementById('devices-loading');
             const devicesError = document.getElementById('devices-error');
             const devicesTable = document.getElementById('devices-table');
             const devicesEmpty = document.getElementById('devices-empty');
             
-            if (devicesLoading) devicesLoading.style.display = 'block';
+            // Only show loading if no devices are currently displayed
+            const hasExistingDevices = devicesTable && devicesTable.querySelector('table tbody .device-row');
+            if (devicesLoading && !hasExistingDevices) {
+                devicesLoading.style.display = 'block';
+            } else if (devicesLoading) {
+                devicesLoading.style.display = 'none';
+            }
             if (devicesError) devicesError.style.display = 'none';
-            if (devicesTable) devicesTable.style.display = 'none';
+            // Don't hide table - we'll update it in place
             if (devicesEmpty) devicesEmpty.style.display = 'none';
 
             // Disable refresh button during load (only if manual refresh)
@@ -382,6 +552,16 @@
                         devicesError.textContent = `Error: ${escapeHtml(data.error)}`;
                         devicesError.style.display = 'block';
                     }
+                    // Clear devices on error
+                    const devicesTable = document.getElementById('devices-table');
+                    if (devicesTable) {
+                        const table = devicesTable.querySelector('table');
+                        if (table) table.style.display = 'none';
+                    }
+                    const devicesEmpty = document.getElementById('devices-empty');
+                    if (devicesEmpty) devicesEmpty.style.display = 'block';
+                    previousDevices = [];
+                    deviceRowMap.clear();
                 } else {
                     renderDevices('devices-table', data.devices, 'devices-empty');
                 }
