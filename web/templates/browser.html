@@ -398,9 +398,10 @@
                 formatted += '<div class="avahi-txt-grid">';
                 sharedFields.forEach((value, key) => {
                     const displayName = getFieldDisplayName(key);
-                    const isLongValue = value.length > 40 || /^[0-9a-fA-F:,\s-]+$/.test(value);
+                    const translatedValue = translateValue(key, value);
+                    const isLongValue = translatedValue.length > 40 || /^[0-9a-fA-F:,\s-]+$/.test(translatedValue);
                     const valueClass = isLongValue ? 'txt-value long-value' : 'txt-value';
-                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="${valueClass}">${escapeHtml(value)}</span></div>`;
+                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="${valueClass}">${escapeHtml(translatedValue)}</span></div>`;
                 });
                 formatted += '</div>';
             }
