@@ -8,14 +8,23 @@ RUN mkdir -p /var/run/dbus /var/run/avahi-daemon
 # Copy Avahi config (will be overridden by volume mount)
 COPY configs/avahi-daemon.conf /etc/avahi/avahi-daemon.conf
 
-# Startup script - detect host IP and make it available via D-Bus
+# Startup script - use host D-Bus (Avahi runs on host networking)
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo '# Clean stale PID/socket files (dbus is provided by host via bind mount)' >> /start.sh && \
-    echo 'rm -f /var/run/dbus/pid /run/dbus/pid /run/avahi-daemon/pid /var/run/avahi-daemon/pid' >> /start.sh && \
-    echo '# Wait for host-provided D-Bus socket' >> /start.sh && \
-    echo 'while [ ! -S /var/run/dbus/system_bus_socket ]; do' >> /start.sh && \
-    echo '  echo "Waiting for host D-Bus socket..."; sleep 1; done' >> /start.sh && \
-    echo '# Start avahi-daemon (do NOT start dbus-daemon here)' >> /start.sh && \
+    echo '# Clean stale PID files (do NOT remove host D-Bus socket)' >> /start.sh && \
+    echo 'rm -f /run/avahi-daemon/pid /var/run/avahi-daemon/pid' >> /start.sh && \
+    echo 'mkdir -p /var/run/avahi-daemon' >> /start.sh && \
+    echo '# Wait for host D-Bus socket (Avahi on host networking uses host D-Bus)' >> /start.sh && \
+    echo 'for i in $(seq 1 10); do' >> /start.sh && \
+    echo '  if [ -S /var/run/dbus/system_bus_socket ]; then' >> /start.sh && \
+    echo '    if timeout 2 dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames >/dev/null 2>&1; then' >> /start.sh && \
+    echo '      echo \"Host D-Bus is ready\"' >> /start.sh && \
+    echo '      break' >> /start.sh && \
+    echo '    fi' >> /start.sh && \
+    echo '  fi' >> /start.sh && \
+    echo '  echo \"Waiting for host D-Bus...\"' >> /start.sh && \
+    echo '  sleep 1' >> /start.sh && \
+    echo 'done' >> /start.sh && \
+    echo '# Start avahi-daemon (uses host D-Bus)' >> /start.sh && \
     echo 'avahi-daemon -D' >> /start.sh && \
     echo 'sleep 1' >> /start.sh && \
     echo '# Detect host IP (Avahi runs on host networking)' >> /start.sh && \
