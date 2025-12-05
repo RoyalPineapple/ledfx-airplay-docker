@@ -446,19 +446,20 @@ def get_airplay_name():
 
 
 def get_airplay_status():
-    """Check AirPlay advertisement status by reading config and checking network"""
+    """Check AirPlay advertisement status by reading config and validating Avahi is advertising"""
     status = {
         'configured': False,
         'device_name': None,
         'advertising': False,
         'running': False,
+        'avahi_running': False,
         'error': None
     }
     
     try:
         # Get configured device name from shairport-sync.conf
         device_name = get_airplay_name()
-        if device_name and device_name != DEFAULT_AIRPLAY_NAME:
+        if device_name:
             status['configured'] = True
             status['device_name'] = device_name
         
@@ -466,13 +467,17 @@ def get_airplay_status():
         shairport_status = check_container_status('shairport-sync')
         status['running'] = shairport_status['running']
         
-        # Check if it's advertising on the network via Avahi
-        if status['running']:
-            # Check if avahi container is running
-            avahi_status = check_container_status('avahi')
-            if avahi_status['running']:
+        # Check if avahi container is running
+        avahi_status = check_container_status('avahi')
+        status['avahi_running'] = avahi_status['running']
+        
+        # Validate that Avahi is actually advertising the service
+        if status['running'] and status['avahi_running']:
+            if not device_name:
+                status['error'] = 'Device name not configured'
+            else:
                 try:
-                    # Browse for our device name in AirPlay services
+                    # Browse for AirPlay services and parse to find our device
                     # Check both AirPlay 2 (_raop._tcp) and AirPlay 1 (_airplay._tcp)
                     airplay2_result = subprocess.run(
                         ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_raop._tcp'],
@@ -487,19 +492,48 @@ def get_airplay_status():
                         timeout=5
                     )
                     
-                    # Check if our device name appears in the browse results
-                    combined_output = (airplay2_result.stdout or '') + (airplay1_result.stdout or '')
-                    if device_name and device_name.lower() in combined_output.lower():
-                        status['advertising'] = True
+                    # Parse the browse output to find our device
+                    # Format: =;interface;protocol;name;type;domain;hostname;address;port;txt_record
+                    # Device name appears in the name field (after @) or in hostname
+                    found_device = False
+                    
+                    # Check AirPlay 2 results
+                    if airplay2_result.returncode == 0 and airplay2_result.stdout:
+                        devices = parse_avahi_browse_output(airplay2_result.stdout)
+                        for device in devices:
+                            # Check if device name matches (case-insensitive)
+                            device_display_name = device.get('name', '').lower()
+                            device_hostname = device.get('hostname', '').lower()
+                            if (device_name.lower() in device_display_name or 
+                                device_name.lower() in device_hostname):
+                                found_device = True
+                                break
+                    
+                    # Check AirPlay 1 results if not found yet
+                    if not found_device and airplay1_result.returncode == 0 and airplay1_result.stdout:
+                        devices = parse_avahi_browse_output(airplay1_result.stdout)
+                        for device in devices:
+                            device_display_name = device.get('name', '').lower()
+                            device_hostname = device.get('hostname', '').lower()
+                            if (device_name.lower() in device_display_name or 
+                                device_name.lower() in device_hostname):
+                                found_device = True
+                                break
+                    
+                    status['advertising'] = found_device
+                    
+                    if not found_device:
+                        status['error'] = f'Device "{device_name}" not found in network advertisements'
+                        
                 except subprocess.TimeoutExpired:
                     status['error'] = 'Avahi browse timed out'
                 except Exception as e:
                     logger.warning(f"Error checking AirPlay advertisement: {e}")
                     status['error'] = str(e)
-            else:
-                status['error'] = 'Avahi container is not running'
-        else:
+        elif not status['running']:
             status['error'] = 'Shairport-sync container is not running'
+        elif not status['avahi_running']:
+            status['error'] = 'Avahi container is not running'
             
     except Exception as e:
         logger.error(f"Error getting AirPlay status: {e}")
