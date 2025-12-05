@@ -32,7 +32,7 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '      # Add interfaces setting after general = {' >> /usr/local/bin/start.sh && \
     echo '      # Insert interfaces setting after opening brace (line 9 in standard config)' >> /usr/local/bin/start.sh && \
     echo '      head -n 9 /etc/shairport-sync.conf > /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
-    echo '      printf "$'"'"'\\t'"'"'interfaces = \"$HOST_IP\";\\n" >> /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
+    echo '      printf "        interfaces = \"$HOST_IP\";\\n" >> /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
     echo '      tail -n +10 /etc/shairport-sync.conf >> /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
     echo '      cat /tmp/shairport-sync.conf.tmp > /etc/shairport-sync.conf && rm /tmp/shairport-sync.conf.tmp' >> /usr/local/bin/start.sh && \
     echo '    else' >> /usr/local/bin/start.sh && \
