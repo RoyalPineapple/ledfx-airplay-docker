@@ -10,8 +10,12 @@ COPY configs/avahi-daemon.conf /etc/avahi/avahi-daemon.conf
 
 # Startup script - detect host IP and make it available via D-Bus
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'dbus-daemon --system --nofork --nopidfile &' >> /start.sh && \
-    echo 'sleep 2' >> /start.sh && \
+    echo '# Clean stale PID/socket files (dbus is provided by host via bind mount)' >> /start.sh && \
+    echo 'rm -f /var/run/dbus/pid /run/dbus/pid /run/avahi-daemon/pid /var/run/avahi-daemon/pid' >> /start.sh && \
+    echo '# Wait for host-provided D-Bus socket' >> /start.sh && \
+    echo 'while [ ! -S /var/run/dbus/system_bus_socket ]; do' >> /start.sh && \
+    echo '  echo "Waiting for host D-Bus socket..."; sleep 1; done' >> /start.sh && \
+    echo '# Start avahi-daemon (do NOT start dbus-daemon here)' >> /start.sh && \
     echo 'avahi-daemon -D' >> /start.sh && \
     echo 'sleep 1' >> /start.sh && \
     echo '# Detect host IP (Avahi runs on host networking)' >> /start.sh && \
