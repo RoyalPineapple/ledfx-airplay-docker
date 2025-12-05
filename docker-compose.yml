@@ -19,6 +19,7 @@ networks:
   airglow-network:
     driver: bridge
   shairport-macvlan:
+    name: shairport-macvlan
     driver: macvlan
     driver_opts:
       parent: eth0
