@@ -383,9 +383,8 @@
             // Build formatted output
             let formatted = '<div class="avahi-consolidated">';
             
-            // Shared info section
+            // Shared info and common fields section (no separate label)
             formatted += '<div class="avahi-section shared-section">';
-            formatted += '<h5 class="section-header">Shared Information</h5>';
             formatted += '<div class="avahi-info-row">';
             if (sharedInfo.hostname) formatted += `<span class="info-item"><strong>Hostname:</strong> ${escapeHtml(sharedInfo.hostname)}</span>`;
             if (sharedInfo.address) formatted += `<span class="info-item"><strong>Address:</strong> ${escapeHtml(sharedInfo.address)}</span>`;
@@ -393,7 +392,7 @@
             if (sharedInfo.protocol) formatted += `<span class="info-item"><strong>Protocol:</strong> ${escapeHtml(sharedInfo.protocol)}</span>`;
             formatted += '</div>';
             
-            // Shared fields
+            // Common fields (no separate header)
             if (sharedFields.size > 0) {
                 formatted += '<div class="avahi-txt-grid">';
                 sharedFields.forEach((value, key) => {
