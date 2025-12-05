@@ -32,6 +32,8 @@ services:
   ledfx:
     # LedFX - Real-time LED visualization from audio input
     # Web UI: http://localhost:8888
+    # NOTE: Using :latest tag for automatic updates. For production, consider pinning to specific version
+    # Example: image: ghcr.io/ledfx/ledfx:2.1.2
     image: ghcr.io/ledfx/ledfx:latest
     container_name: ledfx
 
@@ -82,6 +84,10 @@ services:
       # Enable real-time Python output (useful for debugging)
       - PYTHONUNBUFFERED=1
 
+    # Restart policy: unless-stopped means containers will:
+    # - Auto-start on host boot
+    # - Restart on failure
+    # - NOT restart if manually stopped
     restart: unless-stopped
 
     # Health check to verify LedFX API is responding
@@ -138,10 +144,16 @@ services:
       # Shared memory for shairport-sync's internal nqptp process
       - /dev/shm:/dev/shm
 
-    # Ensure LedFX starts first
+    # Ensure LedFX starts first and is healthy before starting shairport-sync
+    # This prevents connection failures during startup
     depends_on:
-      - ledfx
+      ledfx:
+        condition: service_healthy
 
+    # Restart policy: unless-stopped means containers will:
+    # - Auto-start on host boot
+    # - Restart on failure
+    # - NOT restart if manually stopped
     restart: unless-stopped
 
     # Health check to verify shairport-sync is running
@@ -177,12 +189,20 @@ services:
       # Diagnostic scripts (read-only)
       - ./scripts:/scripts:ro
       # Docker socket for container status checks
+      # SECURITY NOTE: Read-only access still exposes container information for reconnaissance.
+      # This is necessary for the web interface to display container status and restart containers.
+      # In production, consider using Docker API proxy or restricting access further.
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-    # Ensure LedFX is available before starting
+    # Ensure LedFX is available and healthy before starting web interface
     depends_on:
-      - ledfx
+      ledfx:
+        condition: service_healthy
 
+    # Restart policy: unless-stopped means containers will:
+    # - Auto-start on host boot
+    # - Restart on failure
+    # - NOT restart if manually stopped
     restart: unless-stopped
 
     # Health check to verify web interface is responding
