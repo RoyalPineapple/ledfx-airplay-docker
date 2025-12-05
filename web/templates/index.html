@@ -267,6 +267,22 @@
                 html += '</div>';
                 html += '</section>';
 
+                // AirPlay Status
+                html += '<section class="status-section">';
+                html += '<h2>AirPlay Status</h2>';
+                html += '<div class="status-grid">';
+                const airplay = data.airplay || {};
+                if (airplay.device_name) {
+                    html += `<div class="status-item"><span class="status-label">Device Name:</span> <span class="status-value">${escapeHtml(airplay.device_name)}</span></div>`;
+                }
+                html += `<div class="status-item"><span class="status-label">Service Running:</span> ${formatStatus(airplay.running, 'Running', 'Stopped')}</div>`;
+                html += `<div class="status-item"><span class="status-label">Advertising on Network:</span> ${formatStatus(airplay.advertising, 'Yes', 'No')}${!airplay.advertising && airplay.running ? ' <span class="status-hint">(check Avahi and network)</span>' : ''}</div>`;
+                if (airplay.error) {
+                    html += `<div class="status-item"><span class="status-label">Status:</span> <span class="status-value" style="color: var(--color-warning);">${escapeHtml(airplay.error)}</span></div>`;
+                }
+                html += '</div>';
+                html += '</section>';
+
                 // Playback Status
                 html += '<section class="status-section">';
                 html += '<h2>Playback Status</h2>';

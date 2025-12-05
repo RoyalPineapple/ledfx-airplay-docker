@@ -445,6 +445,69 @@ def get_airplay_name():
     return DEFAULT_AIRPLAY_NAME
 
 
+def get_airplay_status():
+    """Check AirPlay advertisement status by reading config and checking network"""
+    status = {
+        'configured': False,
+        'device_name': None,
+        'advertising': False,
+        'running': False,
+        'error': None
+    }
+    
+    try:
+        # Get configured device name from shairport-sync.conf
+        device_name = get_airplay_name()
+        if device_name and device_name != DEFAULT_AIRPLAY_NAME:
+            status['configured'] = True
+            status['device_name'] = device_name
+        
+        # Check if shairport-sync container is running
+        shairport_status = check_container_status('shairport-sync')
+        status['running'] = shairport_status['running']
+        
+        # Check if it's advertising on the network via Avahi
+        if status['running']:
+            # Check if avahi container is running
+            avahi_status = check_container_status('avahi')
+            if avahi_status['running']:
+                try:
+                    # Browse for our device name in AirPlay services
+                    # Check both AirPlay 2 (_raop._tcp) and AirPlay 1 (_airplay._tcp)
+                    airplay2_result = subprocess.run(
+                        ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_raop._tcp'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    airplay1_result = subprocess.run(
+                        ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_airplay._tcp'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    
+                    # Check if our device name appears in the browse results
+                    combined_output = (airplay2_result.stdout or '') + (airplay1_result.stdout or '')
+                    if device_name and device_name.lower() in combined_output.lower():
+                        status['advertising'] = True
+                except subprocess.TimeoutExpired:
+                    status['error'] = 'Avahi browse timed out'
+                except Exception as e:
+                    logger.warning(f"Error checking AirPlay advertisement: {e}")
+                    status['error'] = str(e)
+            else:
+                status['error'] = 'Avahi container is not running'
+        else:
+            status['error'] = 'Shairport-sync container is not running'
+            
+    except Exception as e:
+        logger.error(f"Error getting AirPlay status: {e}")
+        status['error'] = str(e)
+    
+    return status
+
+
 def _sanitize_airplay_name(name):
     """Validate and sanitize user-provided AirPlay display name"""
     if name is None:
