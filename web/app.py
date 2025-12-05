@@ -1118,6 +1118,7 @@ def parse_avahi_browse_output(output):
     
     lines = output.split('\n')
     device_map = {}  # Track devices by name to avoid duplicates (IPv4/IPv6)
+    raw_lines_map = {}  # Store raw lines for each device
     
     for line in lines:
         line = line.strip()
@@ -1183,50 +1184,47 @@ def parse_avahi_browse_output(output):
                 # Prefer IPv4 over IPv6 - only keep the primary address
                 if hostname:
                     device_key = hostname.lower()
-                    if device_key not in device_map:
-                        # New device - create entry
-                        device_map[device_key] = {
-                            'name': device_name,
-                            'interface': interface,
-                            'protocol': protocol,
-                            'hostname': hostname,
-                            'address': address,
-                            'port': port,
-                            'firmware_version': firmware_version,
-                            'feature_flags': feature_flags
-                        }
-                    else:
-                        # Existing device - prefer IPv4 over IPv6
-                        existing = device_map[device_key]
-                        # Only update if we have IPv4 and existing is IPv6, or if existing has no address
-                        if (protocol == 'IPv4' and existing.get('protocol') == 'IPv6') or not existing.get('address'):
-                            existing['address'] = address
-                            existing['protocol'] = protocol
-                        # Update firmware/features if missing
-                        if not existing.get('firmware_version') and firmware_version:
-                            existing['firmware_version'] = firmware_version
-                        if not existing.get('feature_flags') and feature_flags:
-                            existing['feature_flags'] = feature_flags
                 else:
                     # No hostname - use device name as fallback key
                     device_key = device_name.lower()
-                    if device_key not in device_map or (protocol == 'IPv4' and device_map[device_key].get('protocol') == 'IPv6'):
-                        device_map[device_key] = {
-                            'name': device_name,
-                            'interface': interface,
-                            'protocol': protocol,
-                            'hostname': hostname,
-                            'address': address,
-                            'port': port,
-                            'firmware_version': firmware_version,
-                            'feature_flags': feature_flags
-                        }
+                
+                # Always add raw line for this device
+                if device_key not in raw_lines_map:
+                    raw_lines_map[device_key] = []
+                raw_lines_map[device_key].append(line)
+                
+                if device_key not in device_map:
+                    # New device - create entry
+                    device_map[device_key] = {
+                        'name': device_name,
+                        'interface': interface,
+                        'protocol': protocol,
+                        'hostname': hostname,
+                        'address': address,
+                        'port': port,
+                        'firmware_version': firmware_version,
+                        'feature_flags': feature_flags
+                    }
+                else:
+                    # Existing device - prefer IPv4 over IPv6
+                    existing = device_map[device_key]
+                    # Only update if we have IPv4 and existing is IPv6, or if existing has no address
+                    if (protocol == 'IPv4' and existing.get('protocol') == 'IPv6') or not existing.get('address'):
+                        existing['address'] = address
+                        existing['protocol'] = protocol
+                    # Update firmware/features if missing
+                    if not existing.get('firmware_version') and firmware_version:
+                        existing['firmware_version'] = firmware_version
+                    if not existing.get('feature_flags') and feature_flags:
+                        existing['feature_flags'] = feature_flags
     
     # Convert device map to list - use single address only
-    for device in device_map.values():
+    for device_key, device in device_map.items():
         if device.get('address') or device.get('hostname'):
             # Use single address only - no consolidation display
             device['address_display'] = device.get('address', '—')
+            # Add raw avahi data
+            device['raw_avahi_data'] = raw_lines_map.get(device_key, [])
             devices.append(device)
     
     return devices
@@ -1267,7 +1265,13 @@ def get_airplay_devices():
                 if hostname_key:
                     if hostname_key not in all_devices:
                         all_devices[hostname_key] = device
+                        all_devices[hostname_key]['raw_avahi_data_ap2'] = device.get('raw_avahi_data', [])
                     all_devices[hostname_key]['airplay2'] = True
+                    # Merge raw data if device already exists
+                    if 'raw_avahi_data_ap2' not in all_devices[hostname_key]:
+                        all_devices[hostname_key]['raw_avahi_data_ap2'] = device.get('raw_avahi_data', [])
+                    else:
+                        all_devices[hostname_key]['raw_avahi_data_ap2'].extend(device.get('raw_avahi_data', []))
         else:
             logger.warning(f"AirPlay 2 browse failed: {airplay2_result.stderr}")
     except subprocess.TimeoutExpired:
@@ -1292,7 +1296,13 @@ def get_airplay_devices():
                 if hostname_key:
                     if hostname_key not in all_devices:
                         all_devices[hostname_key] = device
+                        all_devices[hostname_key]['raw_avahi_data_ap1'] = device.get('raw_avahi_data', [])
                     all_devices[hostname_key]['airplay1'] = True
+                    # Merge raw data if device already exists
+                    if 'raw_avahi_data_ap1' not in all_devices[hostname_key]:
+                        all_devices[hostname_key]['raw_avahi_data_ap1'] = device.get('raw_avahi_data', [])
+                    else:
+                        all_devices[hostname_key]['raw_avahi_data_ap1'].extend(device.get('raw_avahi_data', []))
         else:
             logger.warning(f"AirPlay 1 browse failed: {airplay1_result.stderr}")
     except subprocess.TimeoutExpired:
@@ -1308,6 +1318,13 @@ def get_airplay_devices():
         if device.get('airplay1'):
             versions.append('AirPlay 1')
         device['airplay_versions'] = ', '.join(versions) if versions else 'Unknown'
+        # Combine all raw avahi data
+        raw_data = []
+        if device.get('raw_avahi_data_ap2'):
+            raw_data.extend(device['raw_avahi_data_ap2'])
+        if device.get('raw_avahi_data_ap1'):
+            raw_data.extend(device['raw_avahi_data_ap1'])
+        device['raw_avahi_data'] = raw_data
         result['devices'].append(device)
     
     return jsonify(result)

@@ -84,10 +84,15 @@
             });
         }
 
-        function renderDeviceRow(device) {
+        function renderDeviceRow(device, index) {
+            const deviceId = `device-${index}`;
+            const hasRawData = device.raw_avahi_data && device.raw_avahi_data.length > 0;
             return `
-                <tr class="device-row">
-                    <td class="device-name">${escapeHtml(device.name)}</td>
+                <tr class="device-row ${hasRawData ? 'expandable' : ''}" data-device-id="${deviceId}" ${hasRawData ? 'style="cursor: pointer;"' : ''}>
+                    <td class="device-name">
+                        ${hasRawData ? '<span class="expand-icon">▶</span> ' : ''}
+                        ${escapeHtml(device.name)}
+                    </td>
                     <td class="device-address">${device.address_display ? escapeHtml(device.address_display) : (device.address ? escapeHtml(device.address) : '—')}</td>
                     <td class="device-hostname">${device.hostname ? escapeHtml(device.hostname) : '—'}</td>
                     <td class="device-port">${device.port ? escapeHtml(device.port) : '—'}</td>
@@ -95,6 +100,16 @@
                     <td class="device-firmware">${device.firmware_version ? escapeHtml(device.firmware_version) : '—'}</td>
                     <td class="device-features">${device.feature_flags ? `<code>${escapeHtml(device.feature_flags)}</code>` : '—'}</td>
                 </tr>
+                ${hasRawData ? `
+                <tr class="device-detail-row" id="${deviceId}-detail" style="display: none;">
+                    <td colspan="7" class="device-detail-cell">
+                        <div class="device-detail-content">
+                            <h4>Raw Avahi Data</h4>
+                            <pre class="raw-avahi-data">${escapeHtml(device.raw_avahi_data.join('\n'))}</pre>
+                        </div>
+                    </td>
+                </tr>
+                ` : ''}
             `;
         }
 
@@ -122,8 +137,8 @@
                         </thead>
                         <tbody>
                 `;
-                devices.forEach(device => {
-                    tableHtml += renderDeviceRow(device);
+                devices.forEach((device, index) => {
+                    tableHtml += renderDeviceRow(device, index);
                 });
                 tableHtml += `
                         </tbody>
@@ -131,6 +146,27 @@
                 `;
                 container.innerHTML = tableHtml;
                 container.style.display = 'block';
+                
+                // Attach click handlers for expandable rows
+                document.querySelectorAll('.device-row.expandable').forEach(row => {
+                    row.addEventListener('click', function() {
+                        const deviceId = this.dataset.deviceId;
+                        const detailRow = document.getElementById(`${deviceId}-detail`);
+                        const expandIcon = this.querySelector('.expand-icon');
+                        
+                        if (detailRow) {
+                            if (detailRow.style.display === 'none') {
+                                detailRow.style.display = '';
+                                if (expandIcon) expandIcon.textContent = '▼';
+                                this.classList.add('expanded');
+                            } else {
+                                detailRow.style.display = 'none';
+                                if (expandIcon) expandIcon.textContent = '▶';
+                                this.classList.remove('expanded');
+                            }
+                        }
+                    });
+                });
             } else {
                 empty.style.display = 'block';
             }

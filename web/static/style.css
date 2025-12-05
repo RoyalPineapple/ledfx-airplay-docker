@@ -1190,6 +1190,62 @@ code {
     font-weight: 500;
 }
 
+/* Expandable Device Row Styles */
+.device-row.expandable {
+    transition: background-color 0.2s;
+}
+
+.device-row.expandable:hover {
+    background-color: var(--color-bg);
+}
+
+.device-row.expanded {
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+.expand-icon {
+    display: inline-block;
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    transition: transform 0.2s;
+}
+
+.device-detail-row {
+    background-color: var(--color-bg);
+}
+
+.device-detail-cell {
+    padding: 0 !important;
+    border-top: 2px solid var(--color-border);
+}
+
+.device-detail-content {
+    padding: var(--spacing);
+}
+
+.device-detail-content h4 {
+    margin: 0 0 calc(var(--spacing) * 0.5) 0;
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.raw-avahi-data {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: calc(var(--spacing) * 0.75);
+    border-radius: var(--border-radius);
+    font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid var(--color-border);
+}
+
 /* LedFX Iframe Styles */
 .ledfx-iframe-container {
     width: 100%;
