@@ -190,15 +190,14 @@
             
             let formatted = '<div class="avahi-entry">';
             formatted += '<div class="avahi-header-compact">';
-            formatted += `<span class="avahi-event">${escapeHtml(eventType)}</span>`;
-            const displayServiceType = serviceTypeLabel || serviceType;
-            // Add icon based on service type
+            // Add icon based on service type (replace the [ = ] badge)
             let serviceIcon = '';
             if (serviceType.toLowerCase().includes('audio') || serviceType.toLowerCase().includes('raop') || serviceType.toLowerCase().includes('airtunes')) {
                 serviceIcon = '🔊 ';
             } else if (serviceType.toLowerCase().includes('video') || serviceType.toLowerCase().includes('airplay')) {
                 serviceIcon = '🎥 ';
             }
+            const displayServiceType = serviceTypeLabel || serviceType;
             formatted += `<span class="avahi-service-compact">${serviceIcon}${escapeHtml(displayServiceType)}</span>`;
             formatted += '</div>';
             
