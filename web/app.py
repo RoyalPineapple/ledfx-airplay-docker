@@ -480,12 +480,12 @@ def get_airplay_status():
                     timeout=5
                 )
                 if dbus_check.returncode == 0 and 'org.freedesktop.Avahi' in dbus_check.stdout:
-                    status['d_bus_connected'] = True
+                    status['dbus_connected'] = True
                 else:
-                    status['d_bus_connected'] = False
+                    status['dbus_connected'] = False
             except Exception as e:
                 logger.warning(f"Could not check D-Bus connection: {e}")
-                status['d_bus_connected'] = False
+                status['dbus_connected'] = False
         
         # Validate that Avahi is actually advertising the service
         if status['running'] and status['avahi_running']:
