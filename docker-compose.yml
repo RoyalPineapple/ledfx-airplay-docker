@@ -32,9 +32,9 @@ services:
     volumes:
       # Avahi configuration with reflector enabled
       - ./configs/avahi-daemon.conf:/etc/avahi/avahi-daemon.conf:ro
-      # Host D-Bus socket (Avahi on host networking can access host D-Bus directly)
-      # Mounted here so shairport-sync (bridge networking) can access it via bind mount
-      - /run/dbus:/var/run/dbus:ro
+      # D-Bus socket directory (Avahi will create its own D-Bus daemon here)
+      # Shared with shairport-sync (bridge networking) via bind mount
+      - ./runtime/dbus:/var/run/dbus:rw
       # Shared directory for Avahi to write host IP (Avahi runs on host networking, so it can detect it)
       - ./runtime:/var/run/avahi-daemon:rw
     
@@ -149,9 +149,9 @@ services:
       - ./pulse:/pulse
       # Session hook scripts triggered on AirPlay start/stop
       - ./scripts:/scripts:ro
-      # D-Bus socket from host (shared with Avahi container)
-      # Avahi on host networking uses host D-Bus, shairport-sync on bridge accesses it via this mount
-      - /run/dbus:/var/run/dbus:ro
+      # D-Bus socket from Avahi container (shared via bind mount)
+      # Avahi creates D-Bus daemon, shairport-sync on bridge networking accesses it via this mount
+      - ./runtime/dbus:/var/run/dbus:ro
       # Shared memory for shairport-sync's internal nqptp process
       - /dev/shm:/dev/shm
       # Shared directory to read host IP from Avahi (Avahi writes it on startup)
