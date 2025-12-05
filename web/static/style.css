@@ -1318,6 +1318,23 @@ code {
     word-break: break-all;
 }
 
+.field-help {
+    display: inline-block;
+    margin-left: 0.25rem;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.field-help:hover {
+    opacity: 1;
+}
+
+.avahi-field:hover .field-help {
+    opacity: 1;
+}
+
 .raw-data-toggle {
     margin-top: var(--spacing);
     padding-top: var(--spacing);
@@ -1335,6 +1352,67 @@ code {
 
 .raw-data-toggle summary:hover {
     text-decoration: underline;
+}
+
+.field-help-section {
+    margin-bottom: var(--spacing);
+    padding: calc(var(--spacing) * 0.75);
+    background-color: rgba(52, 152, 219, 0.05);
+    border: 1px solid rgba(52, 152, 219, 0.2);
+    border-radius: var(--border-radius);
+}
+
+.field-help-section summary {
+    cursor: pointer;
+    color: var(--color-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    user-select: none;
+    padding: calc(var(--spacing) * 0.25) 0;
+}
+
+.field-help-section summary:hover {
+    text-decoration: underline;
+}
+
+.field-descriptions {
+    margin-top: calc(var(--spacing) * 0.75);
+    padding-top: calc(var(--spacing) * 0.75);
+    border-top: 1px solid rgba(52, 152, 219, 0.2);
+}
+
+.field-descriptions h5 {
+    margin: 0 0 calc(var(--spacing) * 0.5) 0;
+    color: var(--color-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.description-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: calc(var(--spacing) * 0.5);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.description-grid div {
+    padding: calc(var(--spacing) * 0.25) 0;
+}
+
+.description-grid strong {
+    color: var(--color-primary);
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.description-note {
+    margin-top: calc(var(--spacing) * 0.75);
+    padding-top: calc(var(--spacing) * 0.5);
+    border-top: 1px solid rgba(52, 152, 219, 0.2);
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+    font-style: italic;
 }
 
 .raw-avahi-data {

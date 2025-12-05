@@ -84,6 +84,43 @@
             });
         }
 
+        // Field descriptions for AirPlay TXT record fields
+        const fieldDescriptions = {
+            'vv': 'Version - AirPlay protocol version',
+            'ov': 'OS Version - Operating system version of the device',
+            'vs': 'Source Version - Version of the AirPlay source/client',
+            'vn': 'Version Number - Internal version identifier',
+            'tp': 'Transport Protocol - Audio transport (UDP or TCP)',
+            'pk': 'Public Key - Device public key for secure pairing',
+            'am': 'Audio Model - Device model identifier (e.g., AppleTV14,1)',
+            'md': 'Model - Device capabilities (0=audio, 1=video, 2=photo)',
+            'sf': 'Status Flags - Device status and state flags (hex)',
+            'ft': 'Feature Flags - Device capabilities and supported features (hex)',
+            'et': 'Encryption Types - Supported encryption methods (0=none, 3=FairPlay)',
+            'da': 'Device Authentication - Whether device authentication is required (true/false)',
+            'cn': 'Codec Numbers - Supported audio codecs (0=ALAC, 1=AAC, 2=PCM, 3=MP3)',
+            'osvers': 'OS Version String - Human-readable OS version',
+            'srcvers': 'Source Version String - Human-readable source version',
+            'psi': 'Pairing Session ID - Session identifier for pairing',
+            'pi': 'Pairing ID - Device pairing identifier',
+            'protovers': 'Protocol Version - AirPlay protocol version string',
+            'model': 'Model String - Device model name',
+            'gcgl': 'Game Controller GL - Game controller support flag',
+            'igl': 'iTunes Game Library - iTunes game library support',
+            'gid': 'Group ID - Device group identifier',
+            'flags': 'Flags - General device flags (hex)',
+            'features': 'Features - Extended feature flags (hex)',
+            'fex': 'Feature Extensions - Additional feature extensions',
+            'deviceid': 'Device ID - Unique device identifier (MAC address format)',
+            'btaddr': 'Bluetooth Address - Bluetooth MAC address',
+            'acl': 'Access Control List - Access control settings',
+            'fv': 'Firmware Version - Device firmware version string'
+        };
+
+        function getFieldDescription(fieldName) {
+            return fieldDescriptions[fieldName] || null;
+        }
+
         function formatAvahiData(rawLines) {
             if (!rawLines || rawLines.length === 0) {
                 return '';
@@ -182,7 +219,10 @@
                 formatted += '<div class="avahi-field-group">';
                 formatted += '<h5>TXT Record Fields</h5>';
                 for (const [key, value] of Object.entries(txtFields)) {
-                    formatted += `<div class="avahi-field"><span class="field-label">${escapeHtml(key)}:</span> <span class="field-value">${escapeHtml(value)}</span></div>`;
+                    const description = getFieldDescription(key);
+                    const tooltip = description ? ` title="${escapeHtml(description)}"` : '';
+                    const helpIcon = description ? ' <span class="field-help" title="' + escapeHtml(description) + '">ℹ️</span>' : '';
+                    formatted += `<div class="avahi-field"${tooltip}><span class="field-label">${escapeHtml(key)}:${helpIcon}</span> <span class="field-value">${escapeHtml(value)}</span></div>`;
                 }
                 formatted += '</div>';
             }
@@ -214,6 +254,31 @@
                     <td colspan="7" class="device-detail-cell">
                         <div class="device-detail-content">
                             <h4>Raw Avahi Data</h4>
+                            <details class="field-help-section">
+                                <summary>ℹ️ Field Descriptions</summary>
+                                <div class="field-descriptions">
+                                    <h5>Common AirPlay TXT Record Fields</h5>
+                                    <div class="description-grid">
+                                        <div><strong>vv:</strong> AirPlay protocol version</div>
+                                        <div><strong>ov:</strong> Operating system version</div>
+                                        <div><strong>vs:</strong> Source/client version</div>
+                                        <div><strong>vn:</strong> Internal version number</div>
+                                        <div><strong>tp:</strong> Transport protocol (UDP/TCP)</div>
+                                        <div><strong>pk:</strong> Public key for secure pairing</div>
+                                        <div><strong>am:</strong> Audio model identifier</div>
+                                        <div><strong>md:</strong> Device capabilities (0=audio, 1=video, 2=photo)</div>
+                                        <div><strong>sf:</strong> Status flags (hex)</div>
+                                        <div><strong>ft:</strong> Feature flags - device capabilities (hex)</div>
+                                        <div><strong>et:</strong> Encryption types (0=none, 3=FairPlay)</div>
+                                        <div><strong>da:</strong> Device authentication required</div>
+                                        <div><strong>cn:</strong> Codecs (0=ALAC, 1=AAC, 2=PCM, 3=MP3)</div>
+                                        <div><strong>fv:</strong> Firmware version string</div>
+                                        <div><strong>deviceid:</strong> Unique device ID (MAC format)</div>
+                                        <div><strong>model:</strong> Device model name</div>
+                                    </div>
+                                    <p class="description-note">Hover over field names (ℹ️) for descriptions. Feature flags indicate AirPlay 2 support and capabilities.</p>
+                                </div>
+                            </details>
                             <div class="avahi-data-container">
                                 ${formatAvahiData(device.raw_avahi_data)}
                             </div>
