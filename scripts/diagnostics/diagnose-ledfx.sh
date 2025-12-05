@@ -11,8 +11,8 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     check_ok "Container is running"
     
     # Check API accessibility
-    if curl -s -f "${LEDFX_URL}/api/info" > /dev/null 2>&1; then
-        INFO=$(curl -s "${LEDFX_URL}/api/info")
+    if curl --max-time 5 --connect-timeout 3 -s -f "${LEDFX_URL}/api/info" > /dev/null 2>&1; then
+        INFO=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/info")
         VERSION=$(echo "$INFO" | grep -o '"version":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
         check_ok "API accessible (version: $VERSION)"
     else
@@ -24,8 +24,8 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     echo
     echo "  Component Connections:"
     # Check if LedFX is configured to use PulseAudio
-    if curl -s -f "${LEDFX_URL}/api/audio/devices" > /dev/null 2>&1; then
-        AUDIO_DEVICE=$(curl -s "${LEDFX_URL}/api/audio/devices" 2>/dev/null | grep -o '"active_device":\s*[0-9]*' | grep -o '[0-9]*' || echo "")
+    if curl --max-time 5 --connect-timeout 3 -s -f "${LEDFX_URL}/api/audio/devices" > /dev/null 2>&1; then
+        AUDIO_DEVICE=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/audio/devices" 2>/dev/null | grep -o '"active_device":\s*[0-9]*' | grep -o '[0-9]*' || echo "")
         if [ -n "$AUDIO_DEVICE" ] && [ "$AUDIO_DEVICE" = "0" ]; then
             check_ok "Connected to PulseAudio (using device index 0)"
         else
@@ -43,7 +43,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     fi
     
     # Check global paused state
-    PAUSED=$(curl -s "${LEDFX_URL}/api/virtuals" | jq -r '.paused' 2>/dev/null || echo "unknown")
+    PAUSED=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/virtuals" | jq -r '.paused' 2>/dev/null || echo "unknown")
     if [ "$PAUSED" = "false" ]; then
         check_ok "Global paused state: false (effects are playing)"
     elif [ "$PAUSED" = "true" ]; then
@@ -55,7 +55,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     # Check virtuals
     echo
     echo "  Virtuals:"
-    VIRTUAL_DATA=$(curl -s "${LEDFX_URL}/api/virtuals")
+    VIRTUAL_DATA=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/virtuals")
     if echo "$VIRTUAL_DATA" | jq -e '.virtuals' >/dev/null 2>&1; then
         # Extract virtual IDs using jq
         VIRTUAL_IDS=$(echo "$VIRTUAL_DATA" | jq -r '.virtuals | keys[]' 2>/dev/null || echo "")
@@ -65,7 +65,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
         # Check each virtual
         echo "$VIRTUAL_IDS" | grep -v '^$' | while read vid; do
             if [ -n "$vid" ]; then
-                VIRTUAL_STATE=$(curl -s "${LEDFX_URL}/api/virtuals/${vid}" 2>/dev/null || echo "{}")
+                VIRTUAL_STATE=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/virtuals/${vid}" 2>/dev/null || echo "{}")
                 if echo "$VIRTUAL_STATE" | jq -e ".\"$vid\"" >/dev/null 2>&1; then
                     # Extract values using jq
                     ACTIVE=$(echo "$VIRTUAL_STATE" | jq -r ".\"$vid\".active // \"unknown\"")
@@ -106,7 +106,7 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
     # Check devices
     echo
     echo "  Devices:"
-    DEVICE_DATA=$(curl -s "${LEDFX_URL}/api/devices")
+    DEVICE_DATA=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/devices")
     if echo "$DEVICE_DATA" | jq -e '.devices' >/dev/null 2>&1; then
         # Extract device IDs using jq
         DEVICE_IDS=$(echo "$DEVICE_DATA" | jq -r '.devices | keys[]' 2>/dev/null || echo "")

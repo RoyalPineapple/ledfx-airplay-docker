@@ -61,7 +61,7 @@ fi
 
 if [ "$ALL_VIRTUALS" = "true" ] || [ -z "$VIRTUAL_IDS" ]; then
   # Get all virtual IDs from API using jq
-  VIRTUAL_IDS=$(curl -s "${BASE_URL}/api/virtuals" | \
+  VIRTUAL_IDS=$(curl --max-time 5 --connect-timeout 3 -s "${BASE_URL}/api/virtuals" | \
     jq -r '.virtuals | keys[]' 2>/dev/null | \
     tr '\n' ',' | \
     sed 's/,$//')

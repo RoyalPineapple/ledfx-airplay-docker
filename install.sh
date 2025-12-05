@@ -240,10 +240,6 @@ function setup_directory() {
         msg_warn "Failed to set ownership on pulse directory"
         msg_warn "You may need to manually run: sudo chown -R 1000:1000 ${INSTALL_DIR}/pulse"
     }
-    chown -R 1000:1000 "${INSTALL_DIR}/pulse" || {
-        msg_warn "Failed to set ownership on pulse directory"
-        msg_warn "You may need to manually run: sudo chown -R 1000:1000 ${INSTALL_DIR}/pulse"
-    }
     chown -R 1000:1000 "${INSTALL_DIR}/ledfx-data" || {
         msg_warn "Failed to set ownership on ledfx-data directory"
         msg_warn "You may need to manually run: sudo chown -R 1000:1000 ${INSTALL_DIR}/ledfx-data"

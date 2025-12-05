@@ -22,11 +22,11 @@ networks:
     name: shairport-macvlan
     driver: macvlan
     driver_opts:
-      parent: eth0
+      parent: ${NETWORK_INTERFACE:-eth0}
     ipam:
       config:
-        - subnet: 192.168.2.0/24
-          gateway: 192.168.2.1
+        - subnet: ${NETWORK_SUBNET:-192.168.2.0/24}
+          gateway: ${NETWORK_GATEWAY:-192.168.2.1}
 
 services:
   ledfx:
@@ -108,7 +108,7 @@ services:
     # and clients can connect directly without Docker port mapping
     networks:
       shairport-macvlan:
-        ipv4_address: 192.168.2.202
+        ipv4_address: ${SHAIRPORT_IP:-192.168.2.202}
       # Also connect to bridge network to reach LedFX container
       airglow-network:
         aliases:
@@ -143,6 +143,13 @@ services:
       - ledfx
 
     restart: unless-stopped
+
+    # Health check to verify shairport-sync is running
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "shairport-sync"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   airglow-web:
     # Airglow Status Dashboard - Web interface for status and configuration

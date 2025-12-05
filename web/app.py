@@ -36,9 +36,17 @@ SHAIRPORT_CONF = os.path.join(CONFIG_DIR, 'shairport-sync.conf')
 DEFAULT_AIRPLAY_NAME = 'Airglow'
 
 # Rate limiting for diagnostic endpoint
+# Rate limiting constants
 DIAGNOSTIC_RATE_LIMIT = {}  # Simple in-memory rate limiter
-RATE_LIMIT_WINDOW = 60  # 60 seconds
-RATE_LIMIT_MAX_REQUESTS = 5  # Max 5 requests per window
+RATE_LIMIT_WINDOW_SECONDS = 60  # Rate limit window duration in seconds
+RATE_LIMIT_MAX_REQUESTS = 5  # Maximum requests allowed per window
+
+# API timeout constants (in seconds)
+API_TIMEOUT = 5  # Default timeout for API calls
+CURL_CONNECT_TIMEOUT = 3  # Connection timeout for curl commands
+CURL_MAX_TIME = 5  # Maximum time for curl commands
+DIAGNOSTIC_SCRIPT_TIMEOUT = 60  # Timeout for diagnostic script execution
+CONTAINER_RESTART_TIMEOUT = 30  # Timeout for container restart operations
 
 
 def check_container_status(container_name):
@@ -66,6 +74,7 @@ def check_container_status(container_name):
                     if info.get('connected') and info.get('version'):
                         status['version'] = info['version']
                 except Exception:
+                    # Version check failed, continue without version
                     pass
             elif container_name == 'shairport-sync':
                 # Get Shairport-Sync version from container
@@ -84,6 +93,7 @@ def check_container_status(container_name):
                         if version_match:
                             status['version'] = version_match.group(1)
                 except Exception:
+                    # Version check failed, continue without version
                     pass
         
         return status
@@ -110,7 +120,6 @@ def get_ledfx_info():
             }
     except (subprocess.TimeoutExpired, json.JSONDecodeError, subprocess.SubprocessError) as e:
         logger.warning(f"Error getting LedFX info: {e}")
-        pass
     return {'connected': False, 'version': None, 'data': None}
 
 
@@ -231,6 +240,7 @@ def get_ledfx_audio_device():
                     'available_devices': devices_map
                 }
     except (subprocess.TimeoutExpired, json.JSONDecodeError, subprocess.SubprocessError) as e:
+        # Audio device check failed, return defaults
         pass
     return {
         'configured_index': None,
@@ -293,6 +303,7 @@ def get_audio_status():
                     elif 'Corked: no' in list_inputs.stdout:
                         audio_status['shairport_corked'] = False
     except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        # Audio status check failed, continue with defaults
         pass
     
     # Note: We don't compute a derived "LedFX Connected" status
@@ -322,6 +333,7 @@ def get_audio_status():
                         audio_status['ledfx_streaming_flag'] = True
                         break
     except (subprocess.TimeoutExpired, json.JSONDecodeError, subprocess.SubprocessError):
+        # LedFX streaming check failed, continue with defaults
         pass
     
     return audio_status
@@ -677,6 +689,7 @@ def index():
         if devices_data.get('connected') and devices_data.get('devices'):
             has_ledfx_devices = len(devices_data['devices']) > 0
     except Exception:
+        # Device check failed, continue without device count
         pass
     
     return render_template('landing.html',
@@ -1023,7 +1036,7 @@ def rate_limit_diagnose(f):
         # Clean old entries
         DIAGNOSTIC_RATE_LIMIT[client_id] = [
             req_time for req_time in DIAGNOSTIC_RATE_LIMIT.get(client_id, [])
-            if current_time - req_time < RATE_LIMIT_WINDOW
+            if current_time - req_time < RATE_LIMIT_WINDOW_SECONDS
         ]
         
         # Check rate limit

@@ -52,8 +52,8 @@ if docker_cmd ps --format '{{.Names}}' | grep -q '^ledfx$'; then
         check_ok "LedFX configured to use PulseAudio (source available)"
     else
         # Check via LedFX API if available
-        if curl -s -f "${LEDFX_URL}/api/audio/devices" > /dev/null 2>&1; then
-            AUDIO_DEVICE=$(curl -s "${LEDFX_URL}/api/audio/devices" 2>/dev/null | grep -o '"active_device":\s*[0-9]*' | grep -o '[0-9]*' || echo "")
+        if curl --max-time 5 --connect-timeout 3 -s -f "${LEDFX_URL}/api/audio/devices" > /dev/null 2>&1; then
+            AUDIO_DEVICE=$(curl --max-time 5 --connect-timeout 3 -s "${LEDFX_URL}/api/audio/devices" 2>/dev/null | grep -o '"active_device":\s*[0-9]*' | grep -o '[0-9]*' || echo "")
             if [ -n "$AUDIO_DEVICE" ] && [ "$AUDIO_DEVICE" = "0" ]; then
                 check_ok "LedFX configured to use PulseAudio (device index 0)"
             else

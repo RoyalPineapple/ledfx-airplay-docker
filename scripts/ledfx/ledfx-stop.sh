@@ -37,8 +37,8 @@ BASE_URL="http://${LEDFX_HOST}:${LEDFX_PORT}"
 # Returns 0 (true) if virtual uses Govee, 1 (false) otherwise
 virtual_uses_govee() {
   local vid="$1"
-  local devices_data=$(curl -s "${BASE_URL}/api/devices" 2>/dev/null || echo "{}")
-  local virtual_data=$(curl -s "${BASE_URL}/api/virtuals/${vid}" 2>/dev/null || echo "{}")
+  local devices_data=$(curl --max-time 5 --connect-timeout 3 -s "${BASE_URL}/api/devices" 2>/dev/null || echo "{}")
+  local virtual_data=$(curl --max-time 5 --connect-timeout 3 -s "${BASE_URL}/api/virtuals/${vid}" 2>/dev/null || echo "{}")
   
   # Get all Govee device IDs
   local govee_device_ids=$(echo "$devices_data" | jq -r '.devices | to_entries[] | select(.value.type == "govee") | .key' 2>/dev/null | grep -v '^$')
@@ -101,24 +101,10 @@ deactivate_virtual_govee() {
   done
 }
 
-# If no virtuals specified, get all virtuals from API
-if [ -z "$VIRTUAL_IDS" ]; then
+# If no virtuals specified or "all virtuals" is true, get all virtuals from API
+if [ -z "$VIRTUAL_IDS" ] || [ "$ALL_VIRTUALS" = "true" ]; then
   # Get all virtual IDs from API using jq
-  VIRTUAL_IDS=$(curl -s "${BASE_URL}/api/virtuals" | \
-    jq -r '.virtuals | keys[]' 2>/dev/null | \
-    tr '\n' ',' | \
-    sed 's/,$//')
-fi
-
-# If no virtuals specified and not "all virtuals", get all virtuals from API
-if [ -z "$VIRTUAL_IDS" ] && [ "$ALL_VIRTUALS" != "true" ]; then
-  # This shouldn't happen if config is valid, but handle gracefully
-  ALL_VIRTUALS=true
-fi
-
-if [ "$ALL_VIRTUALS" = "true" ] || [ -z "$VIRTUAL_IDS" ]; then
-  # Get all virtual IDs from API using jq
-  VIRTUAL_IDS=$(curl -s "${BASE_URL}/api/virtuals" | \
+  VIRTUAL_IDS=$(curl --max-time 5 --connect-timeout 3 -s "${BASE_URL}/api/virtuals" | \
     jq -r '.virtuals | keys[]' 2>/dev/null | \
     tr '\n' ',' | \
     sed 's/,$//')

@@ -510,3 +510,279 @@ With these improvements, the codebase would be production-ready and maintainable
 - [x] Specific bug identification
 - [x] Recommendations provided
 
+
+---
+
+## Bridge-Networking Branch Review - docker-compose.yml
+
+**Date:** 2025-01-27  
+**Reviewer:** Auto (AI Code Reviewer)  
+**Scope:** Review of `docker-compose.yml` changes in bridge-networking branch
+
+### Executive Summary
+
+The bridge-networking branch introduces macvlan networking for shairport-sync to solve AirPlay advertisement issues. The architecture is sound, but **hardcoded values significantly limit portability and reliability**. The changes are well-documented but need configuration flexibility before merging to master.
+
+**Overall Assessment:** ⭐⭐⭐ (3/5) - **Needs fixes before merge**
+
+**Key Strengths:**
+- Clean network architecture (macvlan + bridge)
+- Excellent inline documentation
+- Proper service dependencies
+- Good volume mount organization
+
+**Critical Issues:**
+- Hardcoded network interface (`eth0`) - will fail on many systems
+- Hardcoded IP address (192.168.2.202) - not portable
+- Hardcoded subnet/gateway - limits deployment flexibility
+- Missing health check for shairport-sync
+
+---
+
+### 🔴 Critical Issues
+
+#### 1. Hardcoded Network Interface (`eth0`)
+
+**File:** `docker-compose.yml:25`
+
+```yaml
+driver_opts:
+  parent: eth0
+```
+
+**Problem:** Network interface names vary significantly across systems:
+- Traditional: `eth0`, `eth1`
+- Systemd: `enp0s3`, `enp0s8`
+- Predictable: `ens33`, `ens160`
+- Proxmox: `vmbr0` (bridge), `eth0` (physical)
+
+**Impact:** 
+- Macvlan network creation will **fail** on systems without `eth0`
+- No way to configure for different environments
+- Breaks on Proxmox if physical interface is different
+
+**Fix Required:**
+```yaml
+driver_opts:
+  parent: ${NETWORK_INTERFACE:-eth0}
+```
+
+**Recommendation:** Add validation in install script to detect the correct interface.
+
+---
+
+#### 2. Hardcoded IP Address (192.168.2.202)
+
+**File:** `docker-compose.yml:111`
+
+```yaml
+ipv4_address: 192.168.2.202
+```
+
+**Problem:** IP address is hardcoded, violating configuration management principles.
+
+**Impact:**
+- IP conflicts if 192.168.2.202 is already in use
+- Not portable across different network environments
+- Cannot deploy multiple instances
+- Violates project standards (should use defaults.conf pattern)
+
+**Fix Required:**
+```yaml
+ipv4_address: ${SHAIRPORT_IP:-192.168.2.202}
+```
+
+**Recommendation:** Document IP assignment and check for conflicts during installation.
+
+---
+
+#### 3. Hardcoded Subnet and Gateway
+
+**File:** `docker-compose.yml:27-29`
+
+```yaml
+config:
+  - subnet: 192.168.2.0/24
+    gateway: 192.168.2.1
+```
+
+**Problem:** Network configuration is hardcoded, limiting deployment flexibility.
+
+**Impact:**
+- Fails on networks using different subnets (e.g., 192.168.1.0/24, 10.0.0.0/24)
+- Cannot adapt to different gateway configurations
+- Violates project standards (should align with `proxmox/scripts/defaults.conf`)
+
+**Fix Required:**
+```yaml
+config:
+  - subnet: ${NETWORK_SUBNET:-192.168.2.0/24}
+    gateway: ${NETWORK_GATEWAY:-192.168.2.1}
+```
+
+**Recommendation:** Align with `proxmox/scripts/defaults.conf` variables:
+- `NETWORK_PREFIX="192.168.2"`
+- `NETWORK_GATEWAY="192.168.2.1"`
+
+---
+
+### 🟡 Major Issues
+
+#### 4. Missing Health Check for shairport-sync
+
+**File:** `docker-compose.yml:95-145`
+
+**Problem:** `shairport-sync` service has no health check, while `ledfx` and `airglow-web` both have health checks.
+
+**Impact:**
+- Docker cannot detect if shairport-sync is unhealthy
+- No automatic restart on failure
+- Harder to monitor service status
+- Inconsistent with other services
+
+**Fix Required:**
+```yaml
+healthcheck:
+  test: ["CMD", "shairport-sync", "-V"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+
+**Alternative:** Check if process is running:
+```yaml
+healthcheck:
+  test: ["CMD", "pgrep", "-f", "shairport-sync"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+
+---
+
+#### 5. Docker Socket Security Risk (Already Documented)
+
+**File:** `docker-compose.yml:173`
+
+```yaml
+- /var/run/docker.sock:/var/run/docker.sock:ro
+```
+
+**Status:** Already identified in previous review (Section 1.1)
+
+**Note:** While read-only, this still exposes container information. Document security implications clearly.
+
+---
+
+### 🟢 Minor Issues
+
+#### 6. Missing Restart Policy Documentation
+
+**File:** `docker-compose.yml:85, 145, 179`
+
+**Problem:** `restart: unless-stopped` is used but behavior is not explained.
+
+**Impact:** Users may not understand container behavior on host reboot.
+
+**Recommendation:** Add comment explaining:
+```yaml
+# Restart policy: unless-stopped means containers will:
+# - Auto-start on host boot
+# - Restart on failure
+# - NOT restart if manually stopped
+restart: unless-stopped
+```
+
+---
+
+#### 7. Health Check Dependencies
+
+**File:** `docker-compose.yml:142-143, 176-177`
+
+**Problem:** Health checks don't wait for dependencies to be healthy.
+
+**Impact:** Containers may start before dependencies are ready, causing connection failures.
+
+**Recommendation:** Use health condition in `depends_on` (Docker Compose v2.1+):
+```yaml
+depends_on:
+  ledfx:
+    condition: service_healthy
+```
+
+**Note:** Requires health checks to be defined first.
+
+---
+
+#### 8. Network Name Collision Risk
+
+**File:** `docker-compose.yml:22`
+
+```yaml
+name: shairport-macvlan
+```
+
+**Problem:** Fixed network name can conflict if multiple instances exist.
+
+**Impact:** Cannot run multiple airglow instances on same host.
+
+**Recommendation:** Make configurable or use project-scoped name:
+```yaml
+name: ${COMPOSE_PROJECT_NAME:-airglow}-macvlan
+```
+
+---
+
+### ✅ Positive Aspects
+
+1. **Excellent Documentation**: Comprehensive inline comments explaining network architecture
+2. **Sound Network Design**: Macvlan for shairport-sync + bridge for inter-container communication is the right approach
+3. **Proper Volume Mounts**: Sensible use of bind mounts with appropriate read-only flags
+4. **Service Dependencies**: Correct use of `depends_on` to ensure startup order
+5. **Port Documentation**: Extensive comments explaining port usage for each protocol
+
+---
+
+### Recommendations Summary
+
+**Before Merging to Master:**
+
+1. ✅ **Make network interface configurable** (Critical)
+   - Use `${NETWORK_INTERFACE:-eth0}`
+   - Add interface detection in install script
+
+2. ✅ **Make IP address configurable** (Critical)
+   - Use `${SHAIRPORT_IP:-192.168.2.202}`
+   - Add IP conflict checking
+
+3. ✅ **Make subnet/gateway configurable** (Critical)
+   - Use environment variables
+   - Align with `proxmox/scripts/defaults.conf`
+
+4. ✅ **Add health check for shairport-sync** (Major)
+   - Consistent with other services
+   - Enables proper dependency management
+
+5. ✅ **Document Docker socket security** (Major)
+   - Add security implications to README
+   - Consider alternatives for production
+
+6. ✅ **Add restart policy documentation** (Minor)
+   - Explain `unless-stopped` behavior
+
+7. ✅ **Consider health-based dependencies** (Minor)
+   - Use `condition: service_healthy` in depends_on
+
+---
+
+### Testing Recommendations
+
+Before merging, test on:
+- [ ] System with `eth0` interface
+- [ ] System with `enp0s3` or `ens33` interface
+- [ ] Proxmox environment (if applicable)
+- [ ] Different subnet (e.g., 192.168.1.0/24)
+- [ ] IP conflict scenario (192.168.2.202 already in use)
+
+---
+
