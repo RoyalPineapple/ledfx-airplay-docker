@@ -30,7 +30,8 @@ RUN echo '#!/bin/sh' > /usr/local/bin/start.sh && \
     echo '    # This allows clients on physical network to connect to shairport-sync on bridge networking' >> /usr/local/bin/start.sh && \
     echo '    if ! grep -q "^[[:space:]]*interfaces[[:space:]]*=" /etc/shairport-sync.conf; then' >> /usr/local/bin/start.sh && \
     echo '      # Add interfaces setting after general = {' >> /usr/local/bin/start.sh && \
-    echo '      awk -v ip="$HOST_IP" '"'"'/^general[[:space:]]*=[[:space:]]*[{]/{print; print "\tinterfaces = \"" ip "\";"; next}1'"'"' /etc/shairport-sync.conf > /tmp/shairport-sync.conf.tmp && mv /tmp/shairport-sync.conf.tmp /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
+    echo '      sed -i "/^general[[:space:]]*=[[:space:]]*{/a\\' >> /usr/local/bin/start.sh && \
+    echo '\\tinterfaces = \"$HOST_IP\";" /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
     echo '    else' >> /usr/local/bin/start.sh && \
     echo '      # Update existing interfaces setting' >> /usr/local/bin/start.sh && \
     echo '      sed -i "s|^[[:space:]]*interfaces[[:space:]]*=.*|\\tinterfaces = \"$HOST_IP\";|" /etc/shairport-sync.conf' >> /usr/local/bin/start.sh && \
