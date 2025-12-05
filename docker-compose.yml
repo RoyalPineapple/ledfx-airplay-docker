@@ -92,14 +92,14 @@ services:
     # - NOT restart if manually stopped
     restart: unless-stopped
 
-            # Health check to verify LedFX process is running
-            # Note: LedFX container doesn't have curl, so we check the process instead
-            # The API is verified separately by dependent services
-            healthcheck:
-              test: ["CMD", "pgrep", "-f", "ledfx"]
-              interval: 30s
-              timeout: 10s
-              retries: 3
+    # Health check to verify LedFX process is running
+    # Note: LedFX container doesn't have curl, so we check the process instead
+    # The API is verified separately by dependent services
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "ledfx"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   shairport-sync:
     # Shairport-Sync - AirPlay 2 receiver
