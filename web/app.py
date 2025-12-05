@@ -452,7 +452,7 @@ def get_airplay_status():
         'device_name': None,
         'advertising': False,
         'running': False,
-        'avahi_running': False,
+        'avahi_running': False,  # Now same as shairport-sync running (built-in Avahi)
         'error': None
     }
     
@@ -467,13 +467,14 @@ def get_airplay_status():
         shairport_status = check_container_status('shairport-sync')
         status['running'] = shairport_status['running']
         
-        # Check if avahi container is running
-        avahi_status = check_container_status('avahi')
-        status['avahi_running'] = avahi_status['running']
+        # Shairport-sync has built-in Avahi, so avahi_running is same as shairport-sync running
+        status['avahi_running'] = status['running']
+        status['dbus_connected'] = False
         
-        # Check D-Bus connection between shairport-sync and Avahi
+        # Check if built-in Avahi is accessible via D-Bus
         if status['running']:
             try:
+                # Check if shairport-sync's built-in Avahi is accessible via D-Bus
                 dbus_check = subprocess.run(
                     ['docker', 'exec', 'shairport-sync', 'dbus-send', '--system', '--print-reply', 
                      '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus', 
@@ -483,29 +484,33 @@ def get_airplay_status():
                     timeout=5
                 )
                 if dbus_check.returncode == 0 and 'org.freedesktop.Avahi' in dbus_check.stdout:
-                    status['d_bus_connected'] = True
+                    status['dbus_connected'] = True
                 else:
-                    status['d_bus_connected'] = False
+                    status['error'] = 'Built-in Avahi not accessible via D-Bus'
+                    logger.warning(f"D-Bus check failed: {dbus_check.stderr}")
+            except subprocess.TimeoutExpired:
+                status['error'] = 'D-Bus connection check timed out'
             except Exception as e:
-                logger.warning(f"Could not check D-Bus connection: {e}")
-                status['d_bus_connected'] = False
+                logger.warning(f"Error checking D-Bus connection: {e}")
+                status['error'] = str(e)
         
         # Validate that Avahi is actually advertising the service
-        if status['running'] and status['avahi_running']:
+        if status['running'] and status['dbus_connected']:
             if not device_name:
                 status['error'] = 'Device name not configured'
             else:
                 try:
                     # Browse for AirPlay services and parse to find our device
                     # Check both AirPlay 2 (_raop._tcp) and AirPlay 1 (_airplay._tcp)
+                    # Use shairport-sync container which has built-in Avahi daemon
                     airplay2_result = subprocess.run(
-                        ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_raop._tcp'],
+                        ['docker', 'exec', 'shairport-sync', 'avahi-browse', '-rpt', '_raop._tcp'],
                         capture_output=True,
                         text=True,
                         timeout=5
                     )
                     airplay1_result = subprocess.run(
-                        ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_airplay._tcp'],
+                        ['docker', 'exec', 'shairport-sync', 'avahi-browse', '-rpt', '_airplay._tcp'],
                         capture_output=True,
                         text=True,
                         timeout=5
@@ -569,8 +574,8 @@ def get_airplay_status():
                     status['error'] = str(e)
         elif not status['running']:
             status['error'] = 'Shairport-sync container is not running'
-        elif not status['avahi_running']:
-            status['error'] = 'Avahi container is not running'
+        elif not status['dbus_connected']:
+            status['error'] = 'Built-in Avahi not accessible via D-Bus'
             
     except Exception as e:
         logger.error(f"Error getting AirPlay status: {e}")
@@ -778,7 +783,7 @@ def status():
         logger.warning(f"Could not query Docker for containers: {e}")
         # Fallback to checking known containers if Docker query fails
         known_containers = {
-            'avahi': 'avahi',
+            # Note: avahi is now built into shairport-sync, no separate container
             'ledfx': 'ledfx',
             'shairport_sync': 'shairport-sync'
         }
@@ -1254,20 +1259,21 @@ def get_airplay_devices():
         'timestamp': datetime.now().isoformat()
     }
     
-    # Check if avahi container is running
-    avahi_status = check_container_status('avahi')
-    if not avahi_status['running']:
-        result['error'] = 'Avahi container is not running'
+    # Check if shairport-sync container is running (it has built-in Avahi)
+    shairport_status = check_container_status('shairport-sync')
+    if not shairport_status['running']:
+        result['error'] = 'Shairport-sync container is not running (required for Avahi browsing)'
         return jsonify(result)
     
     # Combined device map keyed by hostname
     all_devices = {}
     
     # Browse AirPlay 2 services (_raop._tcp)
+    # Use shairport-sync container which has built-in Avahi daemon
     # Use -p for parsable output and -r for resolve
     try:
         airplay2_result = subprocess.run(
-            ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_raop._tcp'],
+            ['docker', 'exec', 'shairport-sync', 'avahi-browse', '-rpt', '_raop._tcp'],
             capture_output=True,
             text=True,
             timeout=10
@@ -1289,10 +1295,11 @@ def get_airplay_devices():
         logger.error(f"Error browsing AirPlay 2 services: {e}")
     
     # Browse AirPlay 1 services (_airplay._tcp)
+    # Use shairport-sync container which has built-in Avahi daemon
     # Use -p for parsable output and -r for resolve
     try:
         airplay1_result = subprocess.run(
-            ['docker', 'exec', 'avahi', 'avahi-browse', '-rpt', '_airplay._tcp'],
+            ['docker', 'exec', 'shairport-sync', 'avahi-browse', '-rpt', '_airplay._tcp'],
             capture_output=True,
             text=True,
             timeout=10

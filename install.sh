@@ -324,23 +324,6 @@ function copy_configs() {
             fi
         fi
         
-        if [[ -f "${SCRIPT_DIR}/Dockerfile.avahi" ]]; then
-            if [[ "${SCRIPT_DIR}/Dockerfile.avahi" != "${INSTALL_DIR}/Dockerfile.avahi" ]]; then
-                cp "${SCRIPT_DIR}/Dockerfile.avahi" "${INSTALL_DIR}/" || {
-                    msg_error "Failed to copy Dockerfile.avahi"
-                    exit 1
-                }
-            fi
-        fi
-        
-        if [[ -f "${SCRIPT_DIR}/Dockerfile.nqptp" ]]; then
-            if [[ "${SCRIPT_DIR}/Dockerfile.nqptp" != "${INSTALL_DIR}/Dockerfile.nqptp" ]]; then
-                cp "${SCRIPT_DIR}/Dockerfile.nqptp" "${INSTALL_DIR}/" || {
-                    msg_error "Failed to copy Dockerfile.nqptp"
-                    exit 1
-                }
-            fi
-        fi
         
         # Copy web application directory
         if [[ -d "${SCRIPT_DIR}/web" ]] && [[ "${SCRIPT_DIR}/web" != "${INSTALL_DIR}/web" ]]; then
@@ -478,23 +461,6 @@ function copy_configs() {
             fi
         fi
         
-        if [[ -f "${temp_repo_dir}/Dockerfile.avahi" ]]; then
-            if [[ "${temp_repo_dir}/Dockerfile.avahi" != "${INSTALL_DIR}/Dockerfile.avahi" ]]; then
-                cp "${temp_repo_dir}/Dockerfile.avahi" "${INSTALL_DIR}/" || {
-                    msg_error "Failed to copy Dockerfile.avahi"
-                    exit 1
-                }
-            fi
-        fi
-        
-        if [[ -f "${temp_repo_dir}/Dockerfile.nqptp" ]]; then
-            if [[ "${temp_repo_dir}/Dockerfile.nqptp" != "${INSTALL_DIR}/Dockerfile.nqptp" ]]; then
-                cp "${temp_repo_dir}/Dockerfile.nqptp" "${INSTALL_DIR}/" || {
-                    msg_error "Failed to copy Dockerfile.nqptp"
-                    exit 1
-                }
-            fi
-        fi
         
         # Copy web directory
         if [[ -d "${temp_repo_dir}/web" ]]; then
