@@ -1363,6 +1363,31 @@ code {
     background-color: #9b59b6;
 }
 
+.device-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 4px;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.device-type-icon {
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.device-type-badge.device-type-apple-tv {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.device-type-badge.device-type-homepod {
+    background-color: rgba(29, 29, 31, 0.1);
+}
+
 .spec-reference-bottom {
     font-size: 0.85rem;
     color: var(--color-text-light);

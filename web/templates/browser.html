@@ -230,6 +230,50 @@
             return fieldNameExpansions[fieldName] || fieldName;
         }
 
+        function detectDeviceType(device) {
+            // Based on OpenAirPlay spec: deviceModel prefix determines type
+            // AppleTV = deviceModel has prefix "AppleTV"
+            // HomePod = deviceModel has prefix "AudioAccessory"
+            if (!device.raw_avahi_data || device.raw_avahi_data.length === 0) {
+                return null;
+            }
+            
+            // Check _raop._tcp for 'am' field (device model)
+            // Check _airplay._tcp for 'model' field (device model)
+            for (const line of device.raw_avahi_data) {
+                if (!line || !line.includes(';')) continue;
+                const parts = line.split(';');
+                if (parts.length < 10) continue;
+                const txtRecord = parts.slice(9).join(';');
+                
+                // Check for 'am=' (Audio Model) in _raop._tcp
+                const amMatch = txtRecord.match(/"am=([^"]+)"/);
+                if (amMatch) {
+                    const model = amMatch[1];
+                    if (model.startsWith('AppleTV')) {
+                        return { type: 'Apple TV', icon: 'tv', color: '#000000' };
+                    }
+                    if (model.startsWith('AudioAccessory')) {
+                        return { type: 'HomePod', icon: 'speaker', color: '#1d1d1f' };
+                    }
+                }
+                
+                // Check for 'model=' in _airplay._tcp
+                const modelMatch = txtRecord.match(/"model=([^"]+)"/);
+                if (modelMatch) {
+                    const model = modelMatch[1];
+                    if (model.startsWith('AppleTV')) {
+                        return { type: 'Apple TV', icon: 'tv', color: '#000000' };
+                    }
+                    if (model.startsWith('AudioAccessory')) {
+                        return { type: 'HomePod', icon: 'speaker', color: '#1d1d1f' };
+                    }
+                }
+            }
+            
+            return null;
+        }
+
         function formatDeviceSupport(device) {
             if (!device.raw_avahi_data || device.raw_avahi_data.length === 0) {
                 return '—';
