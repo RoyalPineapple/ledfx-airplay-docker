@@ -609,11 +609,18 @@
                 row.classList.remove('local-host');
             }
             
-            // Update name cell
+            // Update name cell with device type detection
             const nameCell = cells[0];
-            const newName = escapeHtml(device.name);
-            if (nameCell.textContent.replace(/[▶▼]/g, '').trim() !== device.name) {
-                nameCell.innerHTML = (hasRawData ? '<span class="expand-icon">▶</span> ' : '') + newName;
+            const deviceType = detectDeviceType(device);
+            let newNameHtml = escapeHtml(device.name);
+            if (deviceType) {
+                newNameHtml = `<span class="device-type-badge device-type-${deviceType.type.toLowerCase().replace(/\s+/g, '-')}" title="${deviceType.type}">
+                    <span class="material-icons device-type-icon">${deviceType.icon}</span>
+                </span> ${newNameHtml}`;
+            }
+            const currentNameText = nameCell.textContent.replace(/[▶▼]/g, '').trim();
+            if (currentNameText !== device.name) {
+                nameCell.innerHTML = (hasRawData ? '<span class="expand-icon">▶</span> ' : '') + newNameHtml;
             }
             
             // Update other cells only if changed
@@ -665,6 +672,15 @@
             row.dataset.deviceId = deviceId;
             if (hasRawData) row.style.cursor = 'pointer';
             
+            // Detect device type (Apple TV, HomePod, etc.)
+            const deviceType = detectDeviceType(device);
+            let deviceNameHtml = escapeHtml(device.name);
+            if (deviceType) {
+                deviceNameHtml = `<span class="device-type-badge device-type-${deviceType.type.toLowerCase().replace(/\s+/g, '-')}" title="${deviceType.type}">
+                    <span class="material-icons device-type-icon">${deviceType.icon}</span>
+                </span> ${deviceNameHtml}`;
+            }
+            
             // Add staging badge if device name contains "staging" (case-insensitive)
             const isStaging = device.name.toLowerCase().includes('staging');
             const stagingBadge = isStaging ? '<span class="staging-badge" title="Staging Environment">STAGING</span> ' : '';
@@ -672,7 +688,7 @@
             row.innerHTML = `
                 <td class="device-name">
                     ${hasRawData ? '<span class="expand-icon">▶</span> ' : ''}
-                    ${stagingBadge}${escapeHtml(device.name)}
+                    ${stagingBadge}${deviceNameHtml}
                 </td>
                 <td class="device-address">${device.address_display ? escapeHtml(device.address_display) : (device.address ? escapeHtml(device.address) : '—')}</td>
                 <td class="device-hostname">${device.hostname ? escapeHtml(device.hostname) : '—'}</td>
