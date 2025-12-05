@@ -1282,6 +1282,9 @@ def get_airplay_devices():
         result['error'] = 'Shairport-sync container is not running'
         return jsonify(result)
     
+    # Combined device map keyed by hostname (to merge AirPlay 2 and AirPlay 1 data)
+    all_devices = {}
+    
     # Browse AirPlay 2 services (_raop._tcp) - Audio
     try:
         airplay2_result = subprocess.run(
@@ -1292,11 +1295,19 @@ def get_airplay_devices():
         )
         if airplay2_result.returncode == 0:
             airplay2_devices = parse_avahi_browse_output(airplay2_result.stdout)
-            # Each device from parse_avahi_browse_output is already differentiated by service type
             for device in airplay2_devices:
-                device['airplay2'] = True
-                device['airplay_versions'] = 'AirPlay 2'
-                result['devices'].append(device)
+                hostname_key = device.get('hostname', '').lower() if device.get('hostname') else device.get('name', '').lower()
+                if hostname_key:
+                    if hostname_key not in all_devices:
+                        all_devices[hostname_key] = device
+                        all_devices[hostname_key]['raw_avahi_data_ap2'] = device.get('raw_avahi_data', [])
+                    else:
+                        # Merge raw data
+                        if 'raw_avahi_data_ap2' not in all_devices[hostname_key]:
+                            all_devices[hostname_key]['raw_avahi_data_ap2'] = device.get('raw_avahi_data', [])
+                        else:
+                            all_devices[hostname_key]['raw_avahi_data_ap2'].extend(device.get('raw_avahi_data', []))
+                    all_devices[hostname_key]['airplay2'] = True
         else:
             logger.warning(f"AirPlay 2 browse failed: {airplay2_result.stderr}")
     except subprocess.TimeoutExpired:
@@ -1314,17 +1325,44 @@ def get_airplay_devices():
         )
         if airplay1_result.returncode == 0:
             airplay1_devices = parse_avahi_browse_output(airplay1_result.stdout)
-            # Each device from parse_avahi_browse_output is already differentiated by service type
             for device in airplay1_devices:
-                device['airplay1'] = True
-                device['airplay_versions'] = 'AirPlay Video'
-                result['devices'].append(device)
+                hostname_key = device.get('hostname', '').lower() if device.get('hostname') else device.get('name', '').lower()
+                if hostname_key:
+                    if hostname_key not in all_devices:
+                        all_devices[hostname_key] = device
+                        all_devices[hostname_key]['raw_avahi_data_ap1'] = device.get('raw_avahi_data', [])
+                    else:
+                        # Merge raw data
+                        if 'raw_avahi_data_ap1' not in all_devices[hostname_key]:
+                            all_devices[hostname_key]['raw_avahi_data_ap1'] = device.get('raw_avahi_data', [])
+                        else:
+                            all_devices[hostname_key]['raw_avahi_data_ap1'].extend(device.get('raw_avahi_data', []))
+                    all_devices[hostname_key]['airplay1'] = True
         else:
             logger.warning(f"AirPlay 1 browse failed: {airplay1_result.stderr}")
     except subprocess.TimeoutExpired:
         logger.warning("AirPlay 1 browse timed out")
     except Exception as e:
         logger.error(f"Error browsing AirPlay 1 services: {e}")
+    
+    # Combine devices and merge raw data
+    for device in all_devices.values():
+        versions = []
+        if device.get('airplay2'):
+            versions.append('AirPlay 2')
+        if device.get('airplay1'):
+            versions.append('AirPlay Video')
+        device['airplay_versions'] = ', '.join(versions) if versions else 'Unknown'
+        
+        # Combine all raw avahi data from both service types
+        raw_data = []
+        if device.get('raw_avahi_data_ap2'):
+            raw_data.extend(device['raw_avahi_data_ap2'])
+        if device.get('raw_avahi_data_ap1'):
+            raw_data.extend(device['raw_avahi_data_ap1'])
+        device['raw_avahi_data'] = raw_data
+        
+        result['devices'].append(device)
     
     return jsonify(result)
 

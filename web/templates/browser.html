@@ -195,11 +195,16 @@
                 const txtMatches = txtRecord.matchAll(/"([^=]+)=([^"]*)"/g);
                 // Determine service type: AirPlay 2 audio (_raop._tcp or AirTunes) vs AirPlay Video (_airplay._tcp)
                 let fieldMap = null;
-                if (serviceType.includes('_raop._tcp') || serviceType.includes('airtunes') || 
-                    (serviceType.includes('raop') && !serviceType.includes('airplay'))) {
+                // Check for AirPlay 2 audio - matches "AirTunes Remote Audio" or "_raop._tcp"
+                if (serviceType.includes('_raop._tcp') || 
+                    serviceType.includes('airtunes remote audio') ||
+                    (serviceType.includes('airtunes') && serviceType.includes('audio'))) {
                     fieldMap = ap2Fields;
-                } else if (serviceType.includes('_airplay._tcp') || 
-                          (serviceType.includes('airplay') && serviceType.includes('video'))) {
+                } 
+                // Check for AirPlay Video - matches "AirPlay Remote Video" or "_airplay._tcp"
+                else if (serviceType.includes('_airplay._tcp') || 
+                         (serviceType.includes('airplay') && serviceType.includes('video')) ||
+                         serviceType.includes('airplay remote video')) {
                     fieldMap = apVideoFields;
                 }
                 
@@ -247,7 +252,9 @@
                 formatted += '<div class="avahi-txt-grid">';
                 sharedFields.forEach((value, key) => {
                     const displayName = getFieldDisplayName(key);
-                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="txt-value">${escapeHtml(value)}</span></div>`;
+                    const isLongValue = value.length > 40 || /^[0-9a-fA-F:,\s-]+$/.test(value);
+                    const valueClass = isLongValue ? 'txt-value long-value' : 'txt-value';
+                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="${valueClass}">${escapeHtml(value)}</span></div>`;
                 });
                 formatted += '</div>';
             }
@@ -260,7 +267,9 @@
                 formatted += '<div class="avahi-txt-grid">';
                 ap2Fields.forEach((value, key) => {
                     const displayName = getFieldDisplayName(key);
-                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="txt-value">${escapeHtml(value)}</span></div>`;
+                    const isLongValue = value.length > 40 || /^[0-9a-fA-F:,\s-]+$/.test(value);
+                    const valueClass = isLongValue ? 'txt-value long-value' : 'txt-value';
+                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="${valueClass}">${escapeHtml(value)}</span></div>`;
                 });
                 formatted += '</div>';
                 formatted += '</div>';
@@ -273,7 +282,9 @@
                 formatted += '<div class="avahi-txt-grid">';
                 apVideoFields.forEach((value, key) => {
                     const displayName = getFieldDisplayName(key);
-                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="txt-value">${escapeHtml(value)}</span></div>`;
+                    const isLongValue = value.length > 40 || /^[0-9a-fA-F:,\s-]+$/.test(value);
+                    const valueClass = isLongValue ? 'txt-value long-value' : 'txt-value';
+                    formatted += `<div class="avahi-txt-item"><span class="txt-label">${escapeHtml(displayName)}:</span> <span class="${valueClass}">${escapeHtml(value)}</span></div>`;
                 });
                 formatted += '</div>';
                 formatted += '</div>';

@@ -1468,8 +1468,22 @@ code {
     color: var(--color-text);
     font-family: monospace;
     font-size: 0.75rem;
-    word-break: break-all;
+    word-break: break-word;
+    overflow-wrap: break-word;
     flex: 1;
+    min-width: 0; /* Allow flex item to shrink below content size */
+}
+
+/* Special handling for long hex/UUID values */
+.avahi-txt-item .txt-value.long-value {
+    font-family: 'Courier New', monospace;
+    background-color: rgba(0, 0, 0, 0.03);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
 }
 
 .field-help {
