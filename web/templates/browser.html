@@ -89,32 +89,28 @@
                 return '';
             }
             
-            // Group lines by service type to avoid duplicates
-            const entriesByType = {};
+            // Remove exact duplicates but keep all unique entries
+            const uniqueLines = [];
+            const seenLines = new Set();
             
             rawLines.forEach(line => {
                 if (!line || !line.includes(';')) {
                     return;
                 }
                 
-                const parts = line.split(';');
-                if (parts.length < 10) {
-                    return;
+                // Normalize line for comparison (trim whitespace)
+                const normalized = line.trim();
+                if (!seenLines.has(normalized)) {
+                    seenLines.add(normalized);
+                    uniqueLines.push(line);
                 }
-                
-                const serviceType = parts[4];
-                if (!entriesByType[serviceType]) {
-                    entriesByType[serviceType] = [];
-                }
-                entriesByType[serviceType].push(line);
             });
             
-            // Format each unique service type entry
+            // Format all unique entries
             let formatted = '';
-            for (const [serviceType, lines] of Object.entries(entriesByType)) {
-                // Use the first line for each service type (they should be similar)
-                formatted += formatAvahiLine(lines[0], serviceType, lines.length > 1);
-            }
+            uniqueLines.forEach((line, index) => {
+                formatted += formatAvahiLine(line, null, false);
+            });
             
             return formatted;
         }
